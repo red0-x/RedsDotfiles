@@ -1,0 +1,49 @@
+configuration {
+    modi:                       "drun,filebrowser,window,run";
+    show-icons:                 true;
+    display-drun:                " ";
+    display-run:                 " ";
+    display-filebrowser:         "";
+    display-window:              "";
+    drun-display-format:        "{name}";
+    hover-select:               false;
+    scroll-method:              1;
+    me-select-entry:            "";
+    me-accept-entry:            "MousePrimary";
+    window-format:              "{w} · {c} · {t}";
+}
+
+//@theme "/usr/share/rofi/themes/Monokai.rasi"
+
+window {
+    border-radius: 14px;
+    width: 40em;
+    height: 24em;
+}
+
+listview {
+    border-radius: 10px;
+}
+
+listview {
+    lines: 6;
+    border-radius: 10px;
+}
+
+element {
+    border-radius: 5px;
+    padding: 14px 14px;
+    spacing: 14px;
+}
+
+element selected {
+    border-radius: 5px;
+}
+
+element-icon {
+    size: 2em;
+}
+
+//@theme "/usr/share/rofi/themes/DarkBlue.rasi"
+
+@theme "/usr/share/rofi/themes/Monokai.rasi"

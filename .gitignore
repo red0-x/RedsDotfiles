@@ -1,2 +1,10 @@
 install.sh
 setup_dotfiles.sh
+
+# Wallpapers (large binaries, sync manually)
+.config/ml4w/wallpapers/
+
+# Caches and logs
+.config/*/cache/
+.config/*/logs/
+*.log

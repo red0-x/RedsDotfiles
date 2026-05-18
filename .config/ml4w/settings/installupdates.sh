@@ -1,0 +1,2 @@
+$(cat ~/.config/ml4w/settings/terminal.sh) --class dotfiles-floating -e ~/.config/ml4w/scripts/installupdates.sh
+#need to update this later, the current installupdates.sh seems to only update flatpak and it is really annoying

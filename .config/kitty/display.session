@@ -1,0 +1,6 @@
+new_tab display
+layout splits
+launch big-clock
+launch --location=vsplit music-card
+launch --location=hsplit cava
+launch --location=hsplit --cwd=~ yazi

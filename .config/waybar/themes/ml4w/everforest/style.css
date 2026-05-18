@@ -1,0 +1,506 @@
+/* -----------------------------------------------------
+ * Everforest Glass — ML4W waybar (gummy, inset-only)
+ * Palette: sainnhe/everforest (dark medium)
+ * NOTE: GTK layer-shell clips OUTER box-shadow to widget
+ * bounding box, ignoring border-radius — produces square
+ * halos. ALL shadows here are inset.
+ * ----------------------------------------------------- */
+
+@define-color ef_bg_dim    #232a2e;
+@define-color ef_bg0       #2d353b;
+@define-color ef_bg1       #343f44;
+@define-color ef_bg2       #3d484d;
+@define-color ef_bg3       #475258;
+@define-color ef_fg        #d3c6aa;
+@define-color ef_red       #e67e80;
+@define-color ef_orange    #e69875;
+@define-color ef_yellow    #dbbc7f;
+@define-color ef_green     #a7c080;
+@define-color ef_aqua      #83c092;
+@define-color ef_blue      #7fbbb3;
+@define-color ef_purple    #d699b6;
+@define-color ef_grey1     #859289;
+
+/* parent variables */
+@define-color backgroundlight        rgba(52, 63, 68, 0.55);
+@define-color backgrounddark         rgba(45, 53, 59, 0.65);
+@define-color workspacesbackground1  rgba(35, 42, 46, 0.55);
+@define-color workspacesbackground2  rgba(60, 70, 75, 0.55);
+@define-color bordercolor            rgba(167, 192, 128, 0.30);
+@define-color textcolor1             #d3c6aa;
+@define-color textcolor2             #d3c6aa;
+@define-color textcolor3             #2d353b;
+@define-color iconcolor              #d3c6aa;
+@define-color primary                #a7c080;
+@define-color secondary              rgba(167, 192, 128, 0.25);
+@define-color on_primary             #2d353b;
+@define-color on_secondary           #d3c6aa;
+
+@import '../style.css';
+
+/* -----------------------------------------------------
+ * GLOBAL
+ * ----------------------------------------------------- */
+* {
+    font-family: "Fira Sans Semibold", "Font Awesome 7 Free", "Font Awesome 7 Brands",
+                 "Font Awesome 6 Free", "Font Awesome 6 Brands", FontAwesome,
+                 "Material Icons", "JetBrainsMono Nerd Font", sans-serif;
+    font-size: 13px;
+    min-height: 0;
+    text-shadow:
+        0 0 2px rgba(0, 0, 0, 0.85),
+        0 1px 3px rgba(0, 0, 0, 0.70);
+}
+
+window#waybar {
+    background: transparent;
+    background-color: transparent;
+    border: none;
+    border-bottom: none;
+    transition: background-color 300ms ease;
+}
+
+.modules-left   { margin: 3px 0px 3px 6px; }
+.modules-right  { margin: 3px 6px 3px 0px; }
+.modules-center { margin: 3px 0px 3px 0px; }
+
+/* -----------------------------------------------------
+ * Workspaces — pill cluster
+ * ----------------------------------------------------- */
+#workspaces {
+    background: linear-gradient(180deg,
+        rgba(52, 63, 68, 0.70) 0%,
+        rgba(35, 42, 46, 0.70) 100%);
+    border: 1px solid rgba(0, 0, 0, 0.55);
+    border-radius: 12px;
+    padding: 1px 3px;
+    margin: 2px 2px;
+    opacity: 1;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.10),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.45);
+}
+
+#workspaces button {
+    background: transparent;
+    color: #c5c0a8;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    padding: 0 7px;
+    margin: 2px 2px;
+    min-width: 0;
+    transition:
+        background 220ms ease,
+        color 220ms ease,
+        border-color 220ms ease,
+        box-shadow 220ms ease,
+        min-width 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#workspaces button:hover {
+    background: linear-gradient(180deg,
+        rgba(167, 192, 128, 0.22) 0%,
+        rgba(167, 192, 128, 0.10) 100%);
+    color: #d3c6aa;
+    border-color: rgba(167, 192, 128, 0.40);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.20),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.40);
+}
+
+#workspaces button.active {
+    background: linear-gradient(180deg,
+        rgba(167, 192, 128, 0.40) 0%,
+        rgba(167, 192, 128, 0.20) 100%);
+    color: #ffffff;
+    border-color: rgba(167, 192, 128, 0.65);
+    min-width: 26px;
+    animation: ws-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes ws-pulse {
+    0%   { box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.20),
+            inset 0 0 4px  rgba(167, 192, 128, 0.30); }
+    50%  { box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.28),
+            inset 0 0 10px rgba(167, 192, 128, 0.70); }
+    100% { box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.20),
+            inset 0 0 4px  rgba(167, 192, 128, 0.30); }
+}
+
+#workspaces button.urgent {
+    background: linear-gradient(180deg,
+        rgba(230, 126, 128, 0.45) 0%,
+        rgba(230, 126, 128, 0.25) 100%);
+    color: #ffffff;
+    border-color: rgba(230, 126, 128, 0.75);
+    animation: ws-urgent 1.0s ease-in-out infinite;
+}
+
+@keyframes ws-urgent {
+    0%   { box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.20),
+            inset 0 0 6px  rgba(230, 126, 128, 0.40); }
+    50%  { box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.32),
+            inset 0 0 14px rgba(230, 126, 128, 0.90); }
+    100% { box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.20),
+            inset 0 0 6px  rgba(230, 126, 128, 0.40); }
+}
+
+/* -----------------------------------------------------
+ * Text-chip modules — gummy
+ * ----------------------------------------------------- */
+#clock,
+#network,
+#pulseaudio,
+#battery,
+#cpu,
+#memory,
+#disk,
+#temperature,
+#backlight,
+#bluetooth,
+#bluetooth.on,
+#bluetooth.connected,
+#language,
+#power-profiles-daemon,
+#custom-updates,
+#custom-appmenu {
+    background: linear-gradient(180deg,
+        rgba(60, 72, 77, 0.78) 0%,
+        rgba(35, 42, 46, 0.78) 100%);
+    border: 1px solid rgba(0, 0, 0, 0.55);
+    border-radius: 10px;
+    color: #e6dcc2;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 1px 9px;
+    margin: 2px 3px;
+    opacity: 1;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.45);
+    transition:
+        background 220ms ease,
+        color 220ms ease,
+        box-shadow 220ms ease,
+        border-color 220ms ease;
+}
+
+#clock:hover,
+#network:hover,
+#pulseaudio:hover,
+#battery:hover,
+#cpu:hover,
+#memory:hover,
+#temperature:hover,
+#backlight:hover,
+#bluetooth:hover,
+#custom-updates:hover {
+    background: linear-gradient(180deg,
+        rgba(75, 90, 95, 0.88) 0%,
+        rgba(45, 53, 59, 0.88) 100%);
+    border-color: rgba(167, 192, 128, 0.40);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.24),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.40),
+        inset 0 0 8px rgba(167, 192, 128, 0.18);
+}
+
+#window {
+    background: linear-gradient(180deg,
+        rgba(52, 63, 68, 0.65) 0%,
+        rgba(35, 42, 46, 0.65) 100%);
+    border: 1px solid rgba(0, 0, 0, 0.45);
+    border-radius: 10px;
+    color: #e6dcc2;
+    font-size: 13px;
+    padding: 1px 10px;
+    margin: 2px 8px;
+    opacity: 1;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.35);
+}
+
+window#waybar.empty #window {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+#tray {
+    background: linear-gradient(180deg,
+        rgba(60, 72, 77, 0.78) 0%,
+        rgba(35, 42, 46, 0.78) 100%);
+    border: 1px solid rgba(0, 0, 0, 0.55);
+    border-radius: 10px;
+    padding: 0 6px;
+    margin: 2px 3px;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.14),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.45);
+}
+
+#taskbar {
+    background: linear-gradient(180deg,
+        rgba(52, 63, 68, 0.70) 0%,
+        rgba(35, 42, 46, 0.70) 100%);
+    border: 1px solid rgba(0, 0, 0, 0.50);
+    border-radius: 10px;
+    padding: 0 2px;
+    margin: 2px 6px;
+    opacity: 1;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.40);
+}
+
+#taskbar.empty {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+/* -----------------------------------------------------
+ * Icon-only quicklinks — gummy pill behind SVG icons
+ * ----------------------------------------------------- */
+#custom-brave,
+#custom-browser,
+#custom-keybindings,
+#custom-outlook,
+#custom-filemanager,
+#custom-teams,
+#custom-chatgpt,
+#custom-calculator,
+#custom-windowsvm,
+#custom-cliphist,
+#custom-settings,
+#custom-wallpaper,
+#custom-system,
+#custom-hyprshade,
+#custom-hypridle,
+#custom-tools,
+#custom-ml4w-welcome,
+#custom-waybarthemes,
+#custom-quicklink_chromium,
+#custom-quicklink_edge,
+#custom-quicklink_firefox,
+#custom-quicklink_browser,
+#custom-quicklink_filemanager,
+#custom-quicklink_email,
+#custom-quicklink_thunderbird,
+#custom-quicklink_calculator,
+#custom-sidepad,
+#custom-quicklink1,
+#custom-quicklink2,
+#custom-quicklink3,
+#custom-quicklink4,
+#custom-quicklink5,
+#custom-quicklink6,
+#custom-quicklink7,
+#custom-quicklink8,
+#custom-quicklink9,
+#custom-quicklink10 {
+    background: linear-gradient(180deg,
+        rgba(52, 63, 68, 0.65) 0%,
+        rgba(35, 42, 46, 0.65) 100%);
+    border: 1px solid rgba(0, 0, 0, 0.50);
+    border-radius: 9px;
+    color: #e6dcc2;
+    font-size: 16px;
+    margin: 2px 4px;
+    padding: 0 4px;
+    opacity: 1;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.14),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.40);
+    transition:
+        background 200ms ease,
+        border-color 200ms ease,
+        color 200ms ease,
+        box-shadow 200ms ease;
+}
+
+#custom-brave:hover,
+#custom-browser:hover,
+#custom-keybindings:hover,
+#custom-chatgpt:hover,
+#custom-calculator:hover,
+#custom-cliphist:hover,
+#custom-settings:hover,
+#custom-wallpaper:hover,
+#custom-system:hover,
+#custom-hyprshade:hover,
+#custom-hypridle:hover,
+#custom-tools:hover,
+#custom-ml4w-welcome:hover,
+#custom-waybarthemes:hover,
+#custom-quicklink_chromium:hover,
+#custom-quicklink_edge:hover,
+#custom-quicklink_firefox:hover,
+#custom-quicklink_browser:hover,
+#custom-quicklink_filemanager:hover,
+#custom-quicklink_email:hover,
+#custom-quicklink_thunderbird:hover,
+#custom-quicklink_calculator:hover,
+#custom-sidepad:hover,
+#custom-quicklink1:hover,
+#custom-quicklink2:hover,
+#custom-quicklink3:hover,
+#custom-quicklink4:hover,
+#custom-quicklink5:hover,
+#custom-quicklink6:hover,
+#custom-quicklink7:hover,
+#custom-quicklink8:hover,
+#custom-quicklink9:hover,
+#custom-quicklink10:hover {
+    background: linear-gradient(180deg,
+        rgba(167, 192, 128, 0.32) 0%,
+        rgba(167, 192, 128, 0.14) 100%);
+    border-color: rgba(167, 192, 128, 0.55);
+    color: #ffffff;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.24),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.40),
+        inset 0 0 10px rgba(167, 192, 128, 0.35);
+}
+
+/* -----------------------------------------------------
+ * Notification + idle + exit
+ * ----------------------------------------------------- */
+#custom-notification,
+#idle_inhibitor {
+    background: linear-gradient(180deg,
+        rgba(52, 63, 68, 0.75) 0%,
+        rgba(35, 42, 46, 0.75) 100%);
+    border: 1px solid rgba(0, 0, 0, 0.55);
+    border-radius: 9px;
+    color: #e6dcc2;
+    font-size: 16px;
+    margin: 2px 4px;
+    padding: 0 7px;
+    opacity: 1;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.14),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.45);
+    transition: background 200ms ease, color 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+#custom-notification:hover,
+#idle_inhibitor:hover {
+    background: linear-gradient(180deg,
+        rgba(127, 187, 179, 0.35) 0%,
+        rgba(127, 187, 179, 0.18) 100%);
+    color: #ffffff;
+    border-color: rgba(127, 187, 179, 0.55);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.24),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.40),
+        inset 0 0 10px rgba(127, 187, 179, 0.45);
+}
+
+#idle_inhibitor.activated { color: #e67e80; }
+
+#custom-exit {
+    background: linear-gradient(180deg,
+        rgba(230, 126, 128, 0.55) 0%,
+        rgba(200, 90, 92, 0.55) 100%);
+    border: 1px solid rgba(0, 0, 0, 0.55);
+    border-radius: 9px;
+    color: #ffffff;
+    font-size: 15px;
+    margin: 2px 6px 2px 4px;
+    padding: 0 9px;
+    opacity: 1;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.30),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.45),
+        inset 0 0 6px rgba(230, 126, 128, 0.30);
+    transition: background 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+#custom-exit:hover {
+    background: linear-gradient(180deg,
+        rgba(230, 126, 128, 0.90) 0%,
+        rgba(200, 90, 92, 0.85) 100%);
+    border-color: rgba(0, 0, 0, 0.65);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.40),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.50),
+        inset 0 0 14px rgba(255, 200, 200, 0.55);
+}
+
+/* -----------------------------------------------------
+ * Module accent text colors
+ * ----------------------------------------------------- */
+#clock          { color: #c2dba0; }
+#network        { color: #a8d5cf; }
+#pulseaudio     { color: #ecd49b; }
+#battery        { color: #a7dab2; }
+#cpu            { color: #efb89a; }
+#memory         { color: #e6bbcd; }
+#temperature    { color: #ee9ea0; }
+#bluetooth      { color: #a8d5cf; }
+#backlight      { color: #ecd49b; }
+#custom-updates { color: #ecd49b; }
+
+#pulseaudio.muted { color: #9da9a0; }
+
+#custom-updates.yellow {
+    background: linear-gradient(180deg,
+        rgba(219, 188, 127, 0.75) 0%,
+        rgba(180, 150, 90, 0.75) 100%);
+    color: #2d353b;
+}
+#custom-updates.red {
+    background: linear-gradient(180deg,
+        rgba(230, 126, 128, 0.80) 0%,
+        rgba(200, 90, 92, 0.80) 100%);
+    color: #ffffff;
+}
+
+#battery.charging,
+#battery.plugged { color: #a7dab2; }
+
+#battery.critical:not(.charging) {
+    background: linear-gradient(180deg,
+        rgba(245, 60, 60, 0.85) 0%,
+        rgba(200, 40, 40, 0.85) 100%);
+    color: #ffffff;
+    animation: bat-crit 0.8s ease-in-out infinite;
+}
+
+@keyframes bat-crit {
+    0%   { box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.30),
+            inset 0 0 6px  rgba(255, 100, 100, 0.50); }
+    50%  { box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.45),
+            inset 0 0 14px rgba(255, 100, 100, 0.95); }
+    100% { box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.30),
+            inset 0 0 6px  rgba(255, 100, 100, 0.50); }
+}
+
+/* -----------------------------------------------------
+ * Tooltips
+ * ----------------------------------------------------- */
+tooltip {
+    background: rgba(35, 42, 46, 0.95);
+    border: 1px solid rgba(167, 192, 128, 0.45);
+    border-radius: 10px;
+    padding: 6px;
+}
+
+tooltip label {
+    color: #e6dcc2;
+    padding: 4px;
+    text-shadow: none;
+}
