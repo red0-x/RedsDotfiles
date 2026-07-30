@@ -33,10 +33,19 @@
         "battery",
         "group/hardware",
         "group/tools",
+        "custom/ime",
         "tray",
         "custom/notification",
         "custom/exit",
         "custom/ml4w-welcome",
         "clock"
-    ]
+    ],
+    // IME layout indicator (ibus) — click to toggle us<->cn pinyin
+    "custom/ime": {
+        "exec": "~/.config/hypr/scripts/ime-status.sh",
+        "interval": 5,
+        "signal": 8,
+        "on-click": "~/.config/hypr/scripts/ime-toggle.sh",
+        "tooltip": false
+    }
 }

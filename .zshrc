@@ -52,3 +52,21 @@ export PATH=$PATH:/home/red/.spicetify
 export PATH=/usr/local/cuda/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 (( ! ${+functions[p10k]} )) || p10k finalize
+
+# bun completions
+[ -s "/home/red/.bun/_bun" ] && source "/home/red/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+# terminal-wakatime setup
+export PATH="$HOME/.wakatime:$PATH"
+eval "$(terminal-wakatime init)"
+
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv zsh)"
+export PATH=$PATH:$HOME/go/bin
+# secrets kept out of git — put `export ONSHAPE_API_KEY=...` in ~/.zshrc.local
+[ -f "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"
+
+. "$HOME/.local/bin/env"

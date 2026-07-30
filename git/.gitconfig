@@ -6,3 +6,9 @@
 [user]
 	name = red0xx
 	email = 83562024+red0-x@users.noreply.github.com
+[credential "https://github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
