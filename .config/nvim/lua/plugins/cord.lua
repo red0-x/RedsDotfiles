@@ -31,7 +31,9 @@ return {
           flavor = "accent",
           view = "full",
           swap_fields = false,
-          swap_icons = false,
+          -- red block becomes the large/prominent image; language icon moves
+          -- to the small badge. Set false to put the language icon back on top.
+          swap_icons = true,
         },
         idle = {
           enabled = true,
