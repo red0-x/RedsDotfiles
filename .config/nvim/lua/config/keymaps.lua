@@ -36,7 +36,7 @@ map({ "n", "t" }, "<A-j>", jcode, { desc = "Toggle jcode (right split)" })
 
 -- ── dev server preview (npm run dev) in a bottom split ───────────────
 map({ "n", "t" }, "<A-d>", function()
-  Snacks.terminal.toggle("npm run dev", {
+  Snacks.terminal.toggle("bun run dev", {
     cwd = LazyVim.root(),
     win = { position = "bottom", height = 0.3 },
     auto_close = false,

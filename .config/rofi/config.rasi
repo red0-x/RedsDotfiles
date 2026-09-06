@@ -1,5 +1,6 @@
 configuration {
-    modi:                       "drun,filebrowser,window,run";
+    modi:                       "combi,drun,filebrowser,window,run";
+    combi-modi:                 "drun,run";
     show-icons:                 true;
     display-drun:                " ";
     display-run:                 " ";

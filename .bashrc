@@ -41,4 +41,6 @@ export PATH="$HOME/.npm-global/bin:$PATH"
 export PATH="$HOME/.wakatime:$PATH"
 eval "$(terminal-wakatime init)"
 
-. "$HOME/.local/bin/env"
+[ -f "$HOME/.local/bin/env" ] && . "$HOME/.local/bin/env"
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
+

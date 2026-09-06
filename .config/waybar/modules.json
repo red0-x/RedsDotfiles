@@ -233,6 +233,24 @@
     "format": "/ C {usage}% ",
     "on-click": "~/.config/ml4w/settings/system-monitor.sh"
   },
+  // CPU governor / boost
+  "custom/cpugovernor": {
+    "exec": "~/.config/waybar/scripts/cpu-governor.sh",
+    "return-type": "json",
+    "interval": 5,
+    "signal": 9,
+    "format": "/ {}",
+    "on-click": "~/.config/waybar/scripts/cpu-governor.sh toggle"
+  },
+  // CPU temperature
+  "custom/cputemp": {
+    "exec": "~/.config/waybar/scripts/cpu-temp.sh",
+    "return-type": "json",
+    "interval": 5,
+    "signal": 10,
+    "format": "/ {}",
+    "on-click": "~/.config/ml4w/settings/system-monitor.sh"
+  },
   // Memory
   "memory": {
     "format": "/ M {}% ",
@@ -260,6 +278,8 @@
       "custom/system",
       "disk",
       "cpu",
+      "custom/cpugovernor",
+      "custom/cputemp",
       "memory",
       "hyprland/language"
     ]

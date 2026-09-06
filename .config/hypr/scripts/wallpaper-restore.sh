@@ -43,7 +43,19 @@ fi
 # -----------------------------------------------------
 
 echo ":: Setting wallpaper with source image $wallpaper"
+
+# Wait for hyprpaper socket to be ready
+timeout=10
+while [ $timeout -gt 0 ]; do
+    if hyprctl hyprpaper wallpaper ",${wallpaper}" >/dev/null 2>&1; then
+        break
+    fi
+    sleep 0.5
+    timeout=$((timeout - 1))
+done
+
+# Apply per-monitor and run post-processing (matugen, blur, waybar, etc.)
 if [ -f ~/.local/bin/waypaper ]; then
     export PATH=$PATH:~/.local/bin/
 fi
-waypaper --wallpaper "$wallpaper"
+~/.config/hypr/scripts/wallpaper.sh "$wallpaper" &
