@@ -33,8 +33,8 @@ return {
         })
       end
 
-      vim.g.everforest_transparent = false
-      build(false)
+      vim.g.everforest_transparent = true
+      build(true)
       vim.cmd.colorscheme("everforest")
 
       local function toggle()

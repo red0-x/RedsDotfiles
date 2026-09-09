@@ -14,6 +14,13 @@ map("n", "<leader>J", function()
   LazyVim.terminal({ "jcode" }, { cwd = vim.uv.cwd(), esc_esc = false, ctrl_hjkl = false })
 end, { desc = "jcode (cwd)" })
 
+-- jcode as a plain listed buffer in the current window (shows up in Shift-h/l cycling)
+map("n", "<leader>tj", function()
+  vim.cmd("enew")
+  vim.fn.termopen("jcode", { cwd = LazyVim.root() })
+  vim.cmd("startinsert")
+end, { desc = "jcode (current window, listed buffer)" })
+
 -- ── tab switching (mirrors the kitty alt+N bindings) ─────────────────
 for i = 1, 9 do
   map("n", "<A-" .. i .. ">", "<cmd>" .. i .. "tabnext<cr>", { desc = "Go to tab " .. i })
@@ -33,6 +40,24 @@ local function jcode()
   })
 end
 map({ "n", "t" }, "<A-j>", jcode, { desc = "Toggle jcode (right split)" })
+
+-- ── new nvim instance in a tmux split (mirrors jcode's <A-j> behavior) ─
+map({ "n", "t" }, "<A-n>", function()
+  if vim.env.TMUX then
+    vim.fn.jobstart({ "tmux", "split-window", "-h", "-c", LazyVim.root(), "nvim" }, { detach = true })
+  else
+    vim.notify("Not inside tmux — open a new tmux pane manually, or use :tabnew | terminal nvim", vim.log.levels.WARN)
+  end
+end, { desc = "New nvim instance (tmux split)" })
+
+-- ── empty bash pane in tmux ────────────────────────────────────────────
+map({ "n", "t" }, "<A-b>", function()
+  if vim.env.TMUX then
+    vim.fn.jobstart({ "tmux", "split-window", "-h", "-c", LazyVim.root(), "bash" }, { detach = true })
+  else
+    vim.notify("Not inside tmux — open a new tmux pane manually, or use :terminal", vim.log.levels.WARN)
+  end
+end, { desc = "New bash pane (tmux split)" })
 
 -- ── dev server preview (npm run dev) in a bottom split ───────────────
 map({ "n", "t" }, "<A-d>", function()

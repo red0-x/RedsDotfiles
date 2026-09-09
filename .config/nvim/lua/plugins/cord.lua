@@ -1,13 +1,13 @@
 -- Discord Rich Presence via cord.nvim
 --
--- Theme is Minecraft. Note on "red": cord's Minecraft theme only ships three
--- flavors (dark = #101010, light = #f0f0f0, accent = per-language color), and
--- none of them is globally red -- I verified this by sampling the actual PNGs.
--- So red is applied explicitly here instead:
---   * flavor = "accent" so icons keep their colored Minecraft block backing
---   * the editor icon is pinned to a red Minecraft block (accent ruby, #501d1d)
---   * the idle icon matches
--- Set MC_RED to any icon name below to change the red block used.
+-- Icons: per-language Minecraft icons are the large image (so it changes with
+-- the file you're in), and the red ruby block is the small badge, giving every
+-- state a red hue without freezing on one icon.
+--
+-- The app title ("LazyVim") comes from the Discord application behind
+-- `editor.client` and cannot be renamed from here. To make it say "larpvim",
+-- create an app named larpvim at https://discord.com/developers/applications
+-- and set `client = "<that application id>"` below.
 
 local MC_RED = "ruby" -- accent background sampled at rgb(80, 21, 29)
 
@@ -23,7 +23,7 @@ return {
       return {
         editor = {
           client = "lazyvim",
-          tooltip = "LazyVim - red's forge",
+          tooltip = "larpvim      red0xx ont",
           icon = red,
         },
         display = {
@@ -31,9 +31,8 @@ return {
           flavor = "accent",
           view = "full",
           swap_fields = false,
-          -- red block becomes the large/prominent image; language icon moves
-          -- to the small badge. Set false to put the language icon back on top.
-          swap_icons = true,
+          -- language icon large, red editor block as the small badge
+          swap_icons = false,
         },
         idle = {
           enabled = true,
