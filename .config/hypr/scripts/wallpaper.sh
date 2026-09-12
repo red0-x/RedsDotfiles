@@ -5,6 +5,14 @@
 # |__/|__/\_,_/_/_/ .__/\_,_/ .__/\__/_/   
 #                /_/       /_/             
 
+# Serialize wallpaper changes: without this, mashing the wallpaper keybind runs
+# several copies at once (matugen + waybar/dock restarts + hyprctl) that race and
+# make the wallpaper flicker between images.
+if [ -z "$WALLPAPER_SH_LOCKED" ]; then
+    export WALLPAPER_SH_LOCKED=1
+    exec flock -x "$HOME/.cache/ml4w/wallpaper.lock" "$0" "$@"
+fi
+
 # Source library.sh
 source $HOME/.config/ml4w/library.sh
 
@@ -113,6 +121,9 @@ if [ -f $wallpapereffect ]; then
         waypaper --wallpaper $used_wallpaper
     else
         _writeLog "Wallpaper effect is set to off"
+        # No effect, so nothing above touched hyprpaper. Apply it here, otherwise
+        # the displayed wallpaper can stay stale/out of sync with the cache file.
+        hyprctl hyprpaper reload ",$used_wallpaper" >/dev/null
     fi
 else
     effect="off"
