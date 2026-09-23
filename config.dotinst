@@ -144,6 +144,16 @@
             "title": "Nvim",
             "source": ".config/nvim",
             "value": true
+        },
+        {
+            "title": "Tmux",
+            "source": ".tmux.conf",
+            "value": true
+        },
+        {
+            "title": "Local bin scripts",
+            "source": ".local/bin",
+            "value": true
         }
     ],
     "settings": [
