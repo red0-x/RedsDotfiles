@@ -1,7 +1,5 @@
 # DO NOT EDIT! This file will be overwritten by nwg-look.
-# Any customization should be done in ~/.gtkrc-2.0.mine instead.
-
-include "/home/red/.gtkrc-2.0.mine"
+# Machine-specific overrides belong in a local, untracked GTK configuration.
 gtk-theme-name="Adwaita"
 gtk-icon-theme-name="Colloid-Dark"
 gtk-font-name="Cantarell 11"

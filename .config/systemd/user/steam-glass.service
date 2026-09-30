@@ -1,0 +1,10 @@
+[Unit]
+Description=Rice glass CSS injector for steam
+
+[Service]
+ExecStart=/usr/bin/node %h/.config/steam-glass/inject.mjs
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

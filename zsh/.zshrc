@@ -48,13 +48,13 @@ fi
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 export PATH="$HOME/.npm-global/bin:$PATH"
 
-export PATH=$PATH:/home/red/.spicetify
+export PATH=$PATH:$HOME/.spicetify
 export PATH=/usr/local/cuda/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 (( ! ${+functions[p10k]} )) || p10k finalize
 
 # bun completions
-[ -s "/home/red/.bun/_bun" ] && source "/home/red/.bun/_bun"
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"

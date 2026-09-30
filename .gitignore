@@ -8,3 +8,8 @@ setup_dotfiles.sh
 .config/*/cache/
 .config/*/logs/
 *.log
+__pycache__/
+*.pyc
+
+# File-manager bookmarks are machine-specific and expose local paths.
+.config/gtk-3.0/bookmarks

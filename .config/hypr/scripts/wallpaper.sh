@@ -129,11 +129,27 @@ THEME_PREF=$(grep -E '^gtk-application-prefer-dark-theme=' "$SETTINGS_FILE" | aw
 # Execute matugen
 # -----------------------------------------------------
 
-_writeLog "Execute matugen with $used_wallpaper"
-if [ "$THEME_PREF" -eq 1 ]; then
-    $HOME/.local/bin/matugen image $used_wallpaper -m "dark"
+# Rice palette: Everforest-shaped colors rotated to the wallpaper's
+# dominant hue (waybar, walker, hypr borders, cava). Prints the accent.
+rice_accent=$(python3 $HOME/.config/hypr/scripts/wallcolors.py "$used_wallpaper" 2>/dev/null)
+_writeLog "Rice accent: $rice_accent"
+
+# live-recolor running tmux server
+if command -v tmux >/dev/null && tmux ls >/dev/null 2>&1; then
+    tmux source-file -q ~/.config/tmux/rice-colors.conf
+fi
+
+# live-recolor running cava (SIGUSR2 = reload colors only)
+pkill -USR2 -x cava 2>/dev/null
+
+if [ "$THEME_PREF" -eq 1 ]; then matugen_mode="dark"; else matugen_mode="light"; fi
+if [[ "$rice_accent" =~ ^#[0-9a-fA-F]{6}$ ]]; then
+    # seed matugen from the same accent so kitty/rofi/swaync/gtk/hyprlock match
+    _writeLog "Execute matugen with accent $rice_accent"
+    $HOME/.local/bin/matugen color hex "$rice_accent" -m "$matugen_mode"
 else
-    $HOME/.local/bin/matugen image $used_wallpaper -m "light"
+    _writeLog "Execute matugen with $used_wallpaper"
+    $HOME/.local/bin/matugen image $used_wallpaper -m "$matugen_mode"
 fi
 
 # -----------------------------------------------------

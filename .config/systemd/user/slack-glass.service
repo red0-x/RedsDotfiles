@@ -1,0 +1,10 @@
+[Unit]
+Description=Rice glass CSS injector for slack
+
+[Service]
+ExecStart=/usr/bin/node %h/.config/rice-stars/electron-inject.mjs 9229 %h/.config/slack-glass/slack-glass.css stars
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

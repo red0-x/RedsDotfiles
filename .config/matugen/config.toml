@@ -53,6 +53,7 @@ output_path = '~/.cache/wal/sequences'
 [templates.primary]
 input_path = '~/.config/matugen/templates/primary'
 output_path = '~/.config/ml4w/colors/primary'
+post_hook = 'bash ~/.config/hypr/scripts/icon-recolor.sh'
 
 [templates.secondary]
 input_path = '~/.config/matugen/templates/secondary'
@@ -66,3 +67,38 @@ output_path = '~/.config/ml4w/colors/onsurface'
 input_path = '~/.config/matugen/templates/ohmyposh-colors.json'
 output_path = '~/.config/ohmyposh/colors.json'
 post_hook = "jq --slurpfile palette ~/.config/ohmyposh/colors.json '. + $palette[0]' ~/.config/ohmyposh/EDM115-newline.omp.json > /tmp/new_theme.json && mv /tmp/new_theme.json ~/.config/ohmyposh/EDM115-newline.omp.json"
+
+[templates.betterdiscord]
+input_path = '~/.config/matugen/templates/betterdiscord-translucence.theme.css'
+output_path = '~/.config/BetterDiscord/themes/Translucence.theme.css'
+
+[templates.obsidian]
+input_path = '~/.config/matugen/templates/obsidian-glassmind.css'
+output_path = '~/.config/matugen/generated/obsidian-glassmind.css'
+post_hook = 'bash ~/.config/matugen/apply-obsidian-theme.sh'
+
+[templates.slack]
+input_path = '~/.config/matugen/templates/slack-glass.css'
+output_path = '~/.config/slack-glass/slack-glass.css'
+
+[templates.steam]
+input_path = '~/.config/matugen/templates/steam-palette.json'
+output_path = '~/.config/steam-glass/palette.json'
+
+[templates.brave_theme]
+input_path = '~/.config/matugen/templates/brave-theme.json'
+output_path = '~/.config/brave-glass-theme/manifest.json'
+
+[templates.brave_newtab]
+input_path = '~/.config/matugen/templates/brave-newtab-colors.css'
+output_path = '~/.config/brave-glass-newtab/colors.css'
+post_hook = '~/.config/hypr/scripts/brave-newtab-wallpaper.sh'
+
+[templates.spicetify]
+input_path = '~/.config/matugen/templates/spicetify-color.ini'
+output_path = '~/.config/spicetify/Themes/RiceGlass/color.ini'
+post_hook = '~/.spicetify/spicetify refresh -n >/dev/null 2>&1'
+
+[templates.ghdesktop]
+input_path = '~/.config/matugen/templates/ghdesktop-glass.css'
+output_path = '~/.config/ghdesktop-glass/ghdesktop-glass.css'

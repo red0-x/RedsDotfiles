@@ -1,0 +1,31 @@
+/* Remove collectible nameplates (the card art behind names in the user panel
+   and member list). Discord's nameplate module uses hashed classes
+   (currently *_df39b2): container, fitInAccount, img, videoContainer.
+   Matched by prefix + a structural fallback so it survives hash changes. */
+
+/* nameplate artwork container (member list + account panel) */
+[class*="container_df39b2"],
+[class^="fitInAccount_"], [class*=" fitInAccount_"],
+[class^="videoContainer_"]:has(> video),
+div[class*="container_"][class*="fitInAccount_"] {
+  display: none !important;
+}
+
+/* the palette gradient Discord paints behind the nameplate */
+[style*="--custom-nameplate"] {
+  background: none !important;
+  background-image: none !important;
+  --custom-nameplate: transparent !important;
+  --custom-nameplate-neutral: transparent !important;
+  --custom-nameplate-neutral-hovered: hsl(0 0% 100% / 0.06) !important;
+}
+
+/* user panel buttons that tint with the nameplate color */
+[class*="plated_"],
+[class*="plateMuted_"] {
+  background-color: transparent !important;
+}
+[class*="plated_"]:hover,
+[class*="plateMuted_"]:hover {
+  background-color: var(--background-modifier-hover) !important;
+}

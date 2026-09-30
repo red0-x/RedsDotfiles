@@ -1,11 +1,11 @@
 {
-    "name": "Red's Dotfiles for Hyprland",
-    "id": "com.red0x.dotfiles",
-    "description": "Personal Hyprland dotfiles by red0-x, based on ML4W stable",
+    "name": "Hyprland Dotfiles",
+    "id": "org.example.hyprland-dotfiles",
+    "description": "Hyprland dotfiles based on ML4W stable",
     "version": "1.0.0",
-    "author": "red0-x",
-    "homepage": "https://github.com/red0-x/RedsDotfiles",
-    "source": "https://github.com/red0-x/RedsDotfiles.git",
+    "author": "Dotfiles Maintainer",
+    "homepage": "https://github.com/OWNER/REPOSITORY",
+    "source": "https://github.com/OWNER/REPOSITORY.git",
     "tag": "main",
     "subfolder": "",
     "setupscript": "",
@@ -208,6 +208,6 @@
             "template": ""
         }
     ],
-    "dotinst": "https://raw.githubusercontent.com/red0-x/RedsDotfiles/main/config.dotinst",
+    "dotinst": "https://raw.githubusercontent.com/OWNER/REPOSITORY/main/config.dotinst",
     "type": "remote"
 }

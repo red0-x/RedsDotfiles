@@ -1,25 +1,27 @@
 # RedsDotfiles
 
-Dotfiles for my Laptop and Workstation. Fedora + Hyprland, ML4W base.
+Portable dotfiles for Fedora, Hyprland, and ML4W.
 
 ## Layout
 
-- `.config/` — mirror of `~/.mydotfiles/com.ml4w.dotfiles.stable/.config` (the ML4W source `~/.config` symlinks into). Source of truth.
-- `.bashrc`, `.zshrc`, `.Xresources`, `.gtkrc-2.0` — home dotfiles
-- `bash/`, `zsh/`, `git/`, `gtk/`, `zshrc/` — same content, per-app layout
-- `config.dotinst/` — ML4W dotinst restore metadata
+- `.config/` — user configuration and application settings
+- `.tmux.conf` — tmux configuration
+- `.bashrc`, `.zshrc`, `.Xresources`, `.gtkrc-2.0` — home-directory settings
+- `bash/`, `zsh/`, `git/`, `gtk/`, `zshrc/` — per-app configuration layout
+- `config.dotinst` — ML4W restore metadata
 
-Real files only — no symlinks tracked, so a clone is usable on any machine.
+Real files only, with machine-specific paths and credentials kept out where possible.
 
-## Secrets
+## Secrets and local data
 
-No credentials in this repo. `~/.zshrc` sources `~/.zshrc.local` (untracked) for API keys.
+No credentials belong in this repository. Keep local API keys in the untracked `~/.zshrc.local` file. Git identity and GTK file-manager bookmarks are intentionally excluded. Remote restore owner/repository values in `config.dotinst` are placeholders.
 
-## Not tracked
+Wallpapers, caches, logs, and generated files are not tracked.
 
-Wallpapers (`.config/ml4w/wallpapers/`), caches, logs, `*.bak`.
+## Wallpaper-responsive rice
+
+The wallpaper script derives an Everforest-shaped accent from the active wallpaper and feeds it to Matugen. The generated palette updates the desktop, window borders, terminal, tmux, application themes, and other configured apps. The checked-in templates make those settings reproducible; machine-specific wallpapers and generated caches remain local.
 
 ## Log
 
-- **2026-07-29** — resynced from live: hyprexpo + borders-plus-plus, fcitx5 IME toggle, kicad-wakatime autostart, kdeconnect, voice-dictate bind, display-window kitty session, zsh productivity module (zoxide/fzf/yazi), polkit-mate agent, nvidia `WLR_DRM_DEVICES` + direct scanout. Onshape key pulled out of tracked `.zshrc`.
-- **2026-04-12** — initial dotfiles added.
+- Resynced the ML4W configuration and added portable wallpaper-responsive colors, app themes, tmux/kitty integration, Discord Home branding, and compact GitHub Desktop titlebar styling.
