@@ -1,0 +1,21 @@
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; overflow: hidden; background: var(--surface); font-family: Cantarell, system-ui, sans-serif; color: var(--on-surface); }
+.bg { position: fixed; inset: -40px; background: url(wallpaper.jpg) center / cover; filter: blur(18px) brightness(.8) saturate(1.1); }
+main.glass {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(560px, 90vw); padding: 36px 40px 40px; text-align: center;
+  background: color-mix(in srgb, var(--surface) 40%, transparent);
+  backdrop-filter: blur(6px) saturate(150%) brightness(1.1);
+  border-radius: 28px;
+  box-shadow: inset 0 1px 1px hsl(0 100% 100% / .35), inset 0 -1px 2px hsl(0 0% 0% / .25), inset 0 0 0 1px hsl(0 100% 100% / .04), 0 20px 40px hsl(0 0% 0% / .44);
+}
+#time { font-size: 72px; font-weight: 300; letter-spacing: -1px; }
+#date { color: var(--on-surface-variant); margin: 4px 0 28px; }
+input {
+  width: 100%; height: 48px; padding: 0 22px; border: none; outline: none; border-radius: 24px;
+  font: inherit; font-size: 16px; color: var(--on-surface);
+  background: hsl(0 0% 100% / .1);
+  box-shadow: inset 0 1px 1px hsl(0 100% 100% / .3), inset 0 -1px 2px hsl(0 0% 0% / .25);
+}
+input:focus { background: hsl(0 0% 100% / .14); box-shadow: 0 0 0 2px var(--primary); }
+input::placeholder { color: var(--on-surface-variant); }

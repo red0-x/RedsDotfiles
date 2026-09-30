@@ -9,6 +9,7 @@
 # several copies at once (matugen + waybar/dock restarts + hyprctl) that race and
 # make the wallpaper flicker between images.
 if [ -z "$WALLPAPER_SH_LOCKED" ]; then
+    mkdir -p "$HOME/.cache/ml4w"
     export WALLPAPER_SH_LOCKED=1
     # -o closes the lock fd before exec'ing: without it the long-lived children we
     # restart below (waybar, nwg-dock) inherit it and hold the lock forever, so
@@ -149,14 +150,26 @@ THEME_PREF=$(grep -E '^gtk-application-prefer-dark-theme=' "$SETTINGS_FILE" | aw
 # Execute matugen
 # -----------------------------------------------------
 
+# Fedora's system Python has Pillow; Homebrew's Python may shadow it.
+rice_accent=$(/usr/bin/python3 "$HOME/.config/hypr/scripts/wallcolors.py" "$used_wallpaper")
+if [[ "$rice_accent" =~ ^#[0-9a-fA-F]{6}$ ]]; then
+    if command -v tmux >/dev/null && tmux ls >/dev/null 2>&1; then
+        tmux source-file -q "$HOME/.config/tmux/rice-colors.conf"
+    fi
+    pkill -USR2 -x cava 2>/dev/null || true
+else
+    _writeLog "Rice palette unavailable, retaining existing palette"
+fi
+
 _writeLog "Execute matugen with $used_wallpaper"
 # matugen may not be installed; resolve via PATH and skip rather than erroring out.
 matugen_bin=$(command -v matugen || echo "$HOME/.local/bin/matugen")
 if [ -x "$matugen_bin" ]; then
-    if [ "$THEME_PREF" -eq 1 ]; then
-        "$matugen_bin" image $used_wallpaper -m "dark"
+    if [ "$THEME_PREF" = 1 ]; then matugen_mode="dark"; else matugen_mode="light"; fi
+    if [[ "$rice_accent" =~ ^#[0-9a-fA-F]{6}$ ]]; then
+        "$matugen_bin" color hex "$rice_accent" -m "$matugen_mode"
     else
-        "$matugen_bin" image $used_wallpaper -m "light"
+        "$matugen_bin" image "$used_wallpaper" -m "$matugen_mode"
     fi
 else
     _writeLog "matugen not installed, skipping color generation"

@@ -1,0 +1,30 @@
+# -----------------------------------------------------
+# PRODUCTIVITY  (added: zoxide, yazi, fzf preview)
+# -----------------------------------------------------
+
+# ---- zoxide: smarter cd (z <partial>, zi = interactive) ----
+eval "$(zoxide init zsh)"
+
+# ---- fzf: use fd + bat/eza previews ----
+export FZF_DEFAULT_COMMAND='fd --hidden --strip-cwd-prefix --exclude .git'
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_ALT_C_COMMAND='fd --type=d --hidden --strip-cwd-prefix --exclude .git'
+export FZF_CTRL_T_OPTS="--preview 'bat -n --color=always --line-range :500 {}'"
+export FZF_ALT_C_OPTS="--preview 'eza --tree --color=always --level=2 {}'"
+export FZF_DEFAULT_OPTS="--height 60% --layout=reverse --border"
+
+# ---- yazi: 'y' launches, cd's shell to last dir on quit ----
+function y() {
+	local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
+	yazi "$@" --cwd-file="$tmp"
+	if cwd="$(command cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+		builtin cd -- "$cwd"
+	fi
+	rm -f -- "$tmp"
+}
+
+# ---- handy aliases ----
+alias lg='lazygit'
+alias top='btop'
+# note: 'z <dir>' jumps by frecency, 'zi' = interactive picker (fzf)
+# 'cat' left alone; use 'bat' for syntax-highlighted view

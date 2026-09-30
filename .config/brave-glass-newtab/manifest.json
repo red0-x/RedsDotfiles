@@ -1,0 +1,7 @@
+{
+  "manifest_version": 3,
+  "name": "Rice Glass New Tab",
+  "version": "1.0",
+  "description": "Blurred wallpaper + glass clock/search. Colors and wallpaper refreshed by matugen.",
+  "chrome_url_overrides": { "newtab": "newtab.html" }
+}
