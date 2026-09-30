@@ -36,6 +36,11 @@ The wallpaper script derives an Everforest-shaped accent from the active wallpap
   Existing Matugen outputs are retained rather than modifying unrelated apps.
 - Run `bash .config/hypr/scripts/check-laptop.sh` for a non-disruptive check.
   Validate Hyprland with `Hyprland --verify-config -c ~/.config/hypr/hyprland.conf`.
+- Slack: `~/.config/slack-glass/slack-glass.sh` launches Slack with a localhost debug port and the
+  `slack-glass.service` user unit injects the generated CSS (link it into `~/.config/systemd/user/`).
+- Spotify: Spicetify needs a user Flatpak (`flatpak install --user flathub com.spotify.Client`),
+  Spicetify 2.45+, `spotify_path` set to that install, and `flatpak --user override
+  --filesystem=xdg-config/spicetify com.spotify.Client`. The system Flatpak is read-only.
 - System tuning is unchanged: this laptop currently uses `throughput-performance`.
   To opt into general-purpose balanced tuning, run `sudo tuned-adm profile balanced`.
   No extra power manager, kernel arguments, or battery charge thresholds are added.
