@@ -44,3 +44,7 @@ eval "$(terminal-wakatime init)"
 [ -f "$HOME/.local/bin/env" ] && . "$HOME/.local/bin/env"
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
 
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"

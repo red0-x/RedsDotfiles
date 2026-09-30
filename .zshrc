@@ -52,3 +52,7 @@ export PATH=$PATH:/home/red/.spicetify
 export PATH=/usr/local/cuda/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 (( ! ${+functions[p10k]} )) || p10k finalize
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"

@@ -10,7 +10,10 @@
 # make the wallpaper flicker between images.
 if [ -z "$WALLPAPER_SH_LOCKED" ]; then
     export WALLPAPER_SH_LOCKED=1
-    exec flock -x "$HOME/.cache/ml4w/wallpaper.lock" "$0" "$@"
+    # -o closes the lock fd before exec'ing: without it the long-lived children we
+    # restart below (waybar, nwg-dock) inherit it and hold the lock forever, so
+    # every later wallpaper change blocks on flock and never applies.
+    exec flock -x -o "$HOME/.cache/ml4w/wallpaper.lock" "$0" "$@"
 fi
 
 # Source library.sh
@@ -123,7 +126,13 @@ if [ -f $wallpapereffect ]; then
         _writeLog "Wallpaper effect is set to off"
         # No effect, so nothing above touched hyprpaper. Apply it here, otherwise
         # the displayed wallpaper can stay stale/out of sync with the cache file.
-        hyprctl hyprpaper reload ",$used_wallpaper" >/dev/null
+        # hyprpaper 0.8.x rejects `reload`; preload+wallpaper is the supported path
+        # and "," (all monitors) is not accepted either, so target each output.
+        hyprctl hyprpaper preload "$used_wallpaper" >/dev/null 2>&1
+        for m in $(hyprctl -j monitors | grep -oP '"name": "\K[^"]+'); do
+            hyprctl hyprpaper wallpaper "$m,$used_wallpaper" >/dev/null
+        done
+        hyprctl hyprpaper unload unused >/dev/null 2>&1
     fi
 else
     effect="off"
@@ -141,10 +150,16 @@ THEME_PREF=$(grep -E '^gtk-application-prefer-dark-theme=' "$SETTINGS_FILE" | aw
 # -----------------------------------------------------
 
 _writeLog "Execute matugen with $used_wallpaper"
-if [ "$THEME_PREF" -eq 1 ]; then
-    $HOME/.local/bin/matugen image $used_wallpaper -m "dark"
+# matugen may not be installed; resolve via PATH and skip rather than erroring out.
+matugen_bin=$(command -v matugen || echo "$HOME/.local/bin/matugen")
+if [ -x "$matugen_bin" ]; then
+    if [ "$THEME_PREF" -eq 1 ]; then
+        "$matugen_bin" image $used_wallpaper -m "dark"
+    else
+        "$matugen_bin" image $used_wallpaper -m "light"
+    fi
 else
-    $HOME/.local/bin/matugen image $used_wallpaper -m "light"
+    _writeLog "matugen not installed, skipping color generation"
 fi
 
 # -----------------------------------------------------
