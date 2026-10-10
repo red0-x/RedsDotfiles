@@ -163,7 +163,7 @@ fi
 
 _writeLog "Execute matugen with $used_wallpaper"
 # matugen may not be installed; resolve via PATH and skip rather than erroring out.
-matugen_bin=$(command -v matugen || echo "$HOME/.local/bin/matugen")
+matugen_bin=$(command -v matugen || echo "$HOME/.cargo/bin/matugen")
 if [ -x "$matugen_bin" ]; then
     if [ "$THEME_PREF" = 1 ]; then matugen_mode="dark"; else matugen_mode="light"; fi
     if [[ "$rice_accent" =~ ^#[0-9a-fA-F]{6}$ ]]; then
