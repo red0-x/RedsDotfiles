@@ -1,0 +1,197 @@
+#!/usr/bin/env python3
+"""Check push-to-talk gates without opening a microphone or injecting real keys."""
+import importlib.machinery, importlib.util, json, os, queue, subprocess
+
+loader = importlib.machinery.SourceFileLoader("ptt", "/home/red/.local/bin/jcode-ptt-daemon")
+ptt = importlib.util.module_from_spec(importlib.util.spec_from_loader("ptt", loader))
+loader.exec_module(ptt)
+real_focused_target = ptt.focused_target
+real_transcribe = ptt.transcribe
+calls, timers, workers = [], [], []
+TARGET = ("0xabc", "%24", "test_client")
+focus = TARGET
+
+
+class FakeProc:
+    def terminate(self): calls.append(("pw-stop",))
+    def wait(self, **kwargs): pass
+    def kill(self): calls.append(("pw-kill",))
+
+
+class FakeTimer:
+    def __init__(self, seconds, callback):
+        self.callback, self.cancelled = callback, False
+        timers.append(self)
+    def start(self): pass
+    def cancel(self): self.cancelled = True
+
+
+class FakeThread:
+    def __init__(self, target, args=(), **kwargs): workers.append((target, args))
+    def start(self): pass
+
+
+def reset(target=TARGET):
+    global focus
+    focus = target
+    calls.clear(); timers.clear(); workers.clear()
+    ptt.events = queue.Queue()
+    ptt.state.update(down=False, rec=None, gen=0, bound=False,
+                     last_up=0, timer=None, target=None)
+    ptt.threading.Timer = FakeTimer
+    ptt.threading.Thread = FakeThread
+    ptt.focused_target = lambda: focus
+    ptt.sh = lambda *a, **k: (calls.append(a), subprocess.CompletedProcess(a, 0, "", ""))[1]
+    ptt.notify = lambda *a: None
+    ptt.start_capture = lambda raw: (calls.append(("pw-start",)), FakeProc())[1]
+    ptt.transcribe = lambda raw: "hello world"
+
+
+def drain():
+    while not ptt.events.empty(): ptt.handle(*ptt.events.get_nowait())
+
+
+def begin():
+    # Even a cancelled timer may already have queued its callback.
+    timers[-1].callback()
+    drain()
+
+
+def held():
+    ptt.on_down(100)
+    begin()
+    assert ("pw-start",) in calls, calls
+
+
+# Missing focus guard must not start a microphone from a delayed press.
+reset(None)
+ptt.on_down(100)
+if timers: begin()
+assert ("pw-start",) not in calls, f"recorded outside allowed window: {calls}"
+
+# Tap and an already queued timer callback never record.
+reset()
+ptt.on_down(100); ptt.on_up(180); begin()
+assert ("pw-start",) not in calls and not ptt.state["down"], calls
+
+# A release-before-press pair cannot leave recording latched.
+reset()
+ptt.on_up(180); ptt.on_down(100)
+assert not ptt.state["down"] and not timers, calls
+
+# Duplicate presses cannot create duplicate timers/recordings.
+reset()
+ptt.on_down(100); ptt.on_down(110); begin()
+assert len(timers) == 1 and calls.count(("pw-start",)) == 1, calls
+ptt.on_up(900)
+assert ("pw-stop",) in calls, "microphone must stop before background transcription"
+assert not ptt.state["down"] and ptt.state["rec"] is None
+
+# Leaving the exact window before the hold delay cancels the queued timer.
+reset()
+ptt.on_down(100)
+focus = ("0xdef", "%25", "other_client")
+ptt.on_focus(); begin()
+assert ("pw-start",) not in calls and not ptt.state["down"], calls
+
+# Begin must recheck focus, even before the compositor focus event is processed.
+reset()
+ptt.on_down(100); focus = None; begin()
+assert ("pw-start",) not in calls, calls
+
+# Focus loss while recording stops immediately and discards audio.
+reset()
+held()
+focus = None
+ptt.on_focus()
+assert ("pw-stop",) in calls and ptt.state["rec"] is None and not ptt.state["down"], calls
+assert not any(fn is ptt.finish for fn, args in workers), "focus loss sent a transcript"
+
+# Switching panes or sessions inside one kitty window also cancels recording.
+reset()
+held()
+focus = ("0xabc", "%25", "other_client")
+ptt.on_focus()
+assert ("pw-stop",) in calls and not ptt.state["down"], calls
+
+# Release checks focus independently, then stops capture synchronously.
+reset()
+held(); focus = None; ptt.on_up(900)
+assert ("pw-stop",) in calls
+assert not any(fn is ptt.finish for fn, args in workers), "release sent audio to another window"
+
+# Valid release appends literal text to the pinned pane, never a stale global session.
+reset()
+held(); ptt.on_up(900)
+assert ("pw-stop",) in calls
+for fn, args in workers:
+    if fn is ptt.finish: fn(*args)
+assert ("tmux", "send-keys", "-l", "-t", "%24", "--", "hello world ") in calls, calls
+assert not any("Enter" in c or "jcode" in c for c in calls), calls
+
+# If focus changes while inference runs, its result must not be injected.
+reset()
+held(); ptt.on_up(900)
+focus = None
+for fn, args in workers:
+    if fn is ptt.finish: fn(*args)
+assert not any(c[:2] == ("tmux", "send-keys") for c in calls), calls
+
+# Reload must cancel held state and reinstall native compositor event bindings.
+reset()
+held(); ptt.handle("reload", 0)
+assert ("pw-stop",) in calls and not ptt.state["down"], calls
+assert ("hyprctl", "keyword", "bind", ",space,event,jcode-ptt-down") in calls, calls
+assert any(c[:3] == ("hyprctl", "keyword", "bindriutl") for c in calls), calls
+assert not any("exec" in c or "nc" in " ".join(c) for c in calls), calls
+
+# One native IPC stream preserves key/focus ordering without shell spawn races.
+reset()
+ptt.on_line(b"custom>>jcode-ptt-down")
+ptt.on_line(b"custom>>jcode-ptt-up")
+drain(); begin()
+assert ("pw-start",) not in calls and not ptt.state["down"], calls
+
+# Compositor disconnect, including read errors, always requests safe shutdown.
+reset()
+class BrokenSocket:
+    def recv(self, size): raise OSError("compositor disconnected")
+ptt.watch_focus(BrokenSocket())
+assert list(ptt.events.queue) == [("shutdown", 0)], list(ptt.events.queue)
+
+# A queued focus-away event cancels even if focus already returned before handling.
+reset()
+held()
+ptt.on_line(b"activewindowv2>>0xdef")
+drain()
+assert ("pw-stop",) in calls and not ptt.state["down"], "rapid focus-away-and-back kept recording"
+
+# Resolve actual process ancestry, rejecting non-Jcode panes and unknown focus.
+child = subprocess.Popen(["sleep", "30"])
+try:
+    window = {"class": "kitty", "pid": os.getpid(), "address": "0xabc"}
+    clients = f"{child.pid} jcode-linux-x86_64.bin %24\n"
+    def compositor(*args, **kwargs):
+        return subprocess.CompletedProcess(args, 0, json.dumps(window) if args[0] == "hyprctl" else clients, "")
+    ptt.sh = compositor
+    assert real_focused_target() == ("0xabc", "%24", str(child.pid))
+    window["class"] = "firefox"
+    assert real_focused_target() is None
+    window["class"] = "kitty"
+    clients = f"{child.pid} zsh %24\n"
+    assert real_focused_target() is None
+    clients = f"{os.getppid()} jcode-linux-x86_64.bin %25\n"
+    assert real_focused_target() is None, "another kitty's Jcode leaked into this window"
+    clients = "malformed tmux output"
+    assert real_focused_target() is None
+finally:
+    child.terminate(); child.wait()
+
+# Literal delivery must never turn backend control bytes into terminal shortcuts.
+assert ptt.clean("\x03hello\nworld\x00") == "hello world"
+with ptt.tempfile.NamedTemporaryFile(dir=ptt.RUN) as raw:
+    raw.write(b"0" * 24 + b"\0" * 32000); raw.flush()
+    ptt.sh = lambda *a, **k: subprocess.CompletedProcess(a, 22, "HTTP error", "")
+    assert real_transcribe(raw.name) == "", "HTTP error appended as dictated text"
+
+print("all 22 push-to-talk safety checks passed")

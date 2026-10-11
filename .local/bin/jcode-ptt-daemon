@@ -1,0 +1,296 @@
+#!/usr/bin/env python3
+"""jcode hold-space push-to-talk daemon (Hyprland).
+
+Bare Space is bound only while a Jcode pane in kitty is focused. The bind types a normal space
+natively (so taps behave exactly as before) and also reports press/release to this daemon.
+Holding past HOLD_SECS removes that space, records, shows live transcription in a
+notification, and on release appends the final text to the active jcode input box.
+
+Key and focus events share Hyprland's ordered IPC stream, not asynchronous shell
+commands. Release, focus loss, reload, or compositor disconnect stops capture.
+"""
+import fcntl, json, os, queue, signal, socket, subprocess, tempfile, threading, time, wave
+from pathlib import Path
+
+HOLD_SECS = 2.0
+LIVE_EVERY = 0.3          # pause between live transcription passes
+MAX_SECS = 120
+WHISPER_SERVER = "/home/linuxbrew/.linuxbrew/bin/whisper-server"
+MODEL = os.path.expanduser("~/.local/share/whisper/ggml-base.en.bin")
+PORT = 8178
+RUN = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+SYNC = "string:x-canonical-private-synchronous:jcode-ptt"
+
+events = queue.Queue()
+# down: key physically held; rec: (proc, rawpath, t0) while recording; gen: invalidates old timers/loops
+state = {"down": False, "rec": None, "gen": 0, "bound": False, "last_up": 0, "timer": None, "target": None}
+
+
+def sh(*a, **k):
+    k.setdefault("timeout", 2)
+    return subprocess.run(a, capture_output=True, text=True, **k)
+
+
+def notify(msg, ms=2500):
+    subprocess.Popen(["notify-send", "-t", str(ms), "-h", SYNC, "jcode voice", msg])
+
+
+def tap(key):
+    sh("hyprctl", "dispatch", "sendshortcut", f",{key},activewindow")
+
+
+# ---- bind management ----
+def focused_target():
+    try:
+        win = json.loads(sh("hyprctl", "activewindow", "-j").stdout)
+        if win.get("class") != "kitty":
+            return None
+        clients = sh("tmux", "list-clients", "-F", "#{client_pid} #{pane_current_command} #{pane_id}").stdout
+        for line in clients.splitlines():
+            pid, command, pane = line.split()
+            if command not in ("jcode", "jcode-linux-x86_64.bin"):
+                continue
+            client_pid = pid
+            # tmux's server owns pane processes, so match the attached client to kitty.
+            while int(pid) > 1 and int(pid) != win["pid"]:
+                pid = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[1]
+            if int(pid) == win["pid"]:
+                return (win["address"], pane, client_pid)
+        # ponytail: supports this kitty/tmux setup only. Direct terminals need a
+        # verified client-session map, not the possibly stale last-focused file.
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError):
+        pass  # Unknown focus or dead processes must fail closed.
+    return None
+
+
+def set_bound(want, force=False):
+    if want == state["bound"] and not force:
+        return
+    sh("hyprctl", "keyword", "unbind", ",space")
+    if want:
+        # native + instant: a tap types a normal space even if this daemon dies
+        sh("hyprctl", "keyword", "bind", ",space,sendshortcut,,space,activewindow")
+        sh("hyprctl", "keyword", "bind", ",space,event,jcode-ptt-down")
+        # Release still arrives if modifiers, submaps, or lock state changed.
+        sh("hyprctl", "keyword", "bindriutl", ",space,event,jcode-ptt-up")
+    state["bound"] = want
+
+
+def on_line(ln):
+    if ln == b"custom>>jcode-ptt-down":
+        events.put(("down", time.monotonic_ns()))
+    elif ln == b"custom>>jcode-ptt-up":
+        events.put(("up", time.monotonic_ns()))
+    elif ln.startswith(b"configreloaded>>"):
+        events.put(("reload", 0))
+    elif ln.startswith((b"activewindow>>", b"activewindowv2>>", b"workspace>>", b"submap>>")):
+        events.put(("cancel", 0))  # Cancel even if focus returns before we drain IPC.
+    elif ln.startswith(b"closewindow>>"):
+        events.put(("focus", 0))
+
+
+def watch_focus(s):
+    buf = b""
+    try:
+        while True:
+            d = s.recv(4096)
+            if not d:
+                return
+            buf += d
+            *lines, buf = buf.split(b"\n")
+            for ln in lines:
+                on_line(ln)
+    except OSError:
+        pass
+    finally:
+        events.put(("shutdown", 0))
+
+
+# ---- whisper ----
+def die_with_parent():
+    import ctypes
+    ctypes.CDLL("libc.so.6").prctl(1, 15)  # PR_SET_PDEATHSIG, SIGTERM: no orphaned whisper-server
+
+
+def start_server():
+    return subprocess.Popen(
+        [WHISPER_SERVER, "-m", MODEL, "-t", "8", "--port", str(PORT), "-nt"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, preexec_fn=die_with_parent)
+
+
+def clean(t):
+    t = " ".join("".join(c for c in t if c.isprintable() or c.isspace()).split())
+    if not t or t.startswith(("[", "(")) or set(t) <= set(".-_ "):
+        return ""
+    return t
+
+
+def transcribe(raw_path):
+    data = open(raw_path, "rb").read()[24:]  # pw-record to stdout writes a 24 byte header
+    data = data[: len(data) // 2 * 2]
+    if len(data) < 16000:  # <0.5s
+        return ""
+    with tempfile.NamedTemporaryFile(suffix=".wav", dir=RUN) as f:
+        with wave.open(f.name, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000)
+            w.writeframes(data)
+        r = sh("curl", "-fsS", "--max-time", "30", f"127.0.0.1:{PORT}/inference",
+               "-F", f"file=@{f.name}", "-F", "response_format=text", "-F", "temperature=0.0", timeout=32)
+    return clean(r.stdout) if r.returncode == 0 else ""
+
+
+# ---- recording ----
+def start_capture(raw):
+    with open(raw, "wb") as f:
+        return subprocess.Popen(
+            ["setpriv", "--pdeathsig", "TERM", "pw-record", "--rate", "16000", "--channels", "1", "--format", "s16", "-"],
+            stdout=f, stderr=subprocess.DEVNULL)
+
+
+def live_loop(gen, raw):
+    last = ""
+    while state["gen"] == gen and state["rec"]:
+        try:
+            t = transcribe(raw)
+        except (OSError, subprocess.SubprocessError):
+            return
+        if state["gen"] != gen or not state["rec"]:
+            return
+        if t and t != last:
+            last = t
+            notify("🎤 " + t, 60000)
+        time.sleep(LIVE_EVERY)
+
+
+def finish(rec, target):
+    _, raw, _ = rec
+    try:
+        notify("Transcribing...", 60000)
+        text = transcribe(raw)
+        if focused_target() != target:
+            return
+        if text:
+            result = sh("tmux", "send-keys", "-l", "-t", target[1], "--", text + " ")
+            notify("✓ " + text if result.returncode == 0 else "Could not append transcript", 3000)
+        else:
+            notify("Heard nothing", 1500)
+    except (OSError, subprocess.SubprocessError):
+        notify("Transcription failed", 2500)
+    finally:
+        Path(raw).unlink(missing_ok=True)
+
+
+def stop_capture(rec):
+    p, _, _ = rec
+    p.terminate()
+    try:
+        p.wait(timeout=0.5)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        p.wait()
+
+
+# ---- serial event handling ----
+def on_down(ts):
+    if state["down"] or ts < state["last_up"]:
+        return  # duplicate, or a stale press whose release was already seen
+    target = focused_target()
+    if target is None:
+        return
+    state["down"] = True
+    state["target"] = target
+    state["gen"] += 1
+    t = threading.Timer(HOLD_SECS, lambda g=state["gen"]: events.put(("begin", g)))
+    t.daemon = True
+    state["timer"] = t
+    t.start()
+
+
+def on_begin(gen):
+    if not state["down"] or state["gen"] != gen or state["rec"]:
+        return
+    if focused_target() != state["target"]:
+        on_up(time.monotonic_ns(), commit=False)
+        return
+    tap("BackSpace")  # remove the space typed on press
+    raw = f"{RUN}/jcode-ptt-{gen}.raw"
+    state["rec"] = (start_capture(raw), raw, time.monotonic())
+    notify("Listening... (release space to stop)", 60000)
+    threading.Thread(target=live_loop, args=(gen, raw), daemon=True).start()
+
+
+def on_up(ts, commit=True):
+    state["last_up"] = max(state["last_up"], ts)
+    if not state["down"]:
+        return
+    state["down"] = False
+    state["gen"] += 1
+    if state["timer"]:
+        state["timer"].cancel()
+        state["timer"] = None
+    rec, state["rec"] = state["rec"], None
+    target, state["target"] = state["target"], None
+    if rec:
+        stop_capture(rec)  # Stop the microphone here, not in a delayed worker.
+        if commit and focused_target() == target:
+            threading.Thread(target=finish, args=(rec, target), daemon=True).start()
+        else:
+            Path(rec[1]).unlink(missing_ok=True)
+            notify("Recording cancelled", 1500)
+
+
+def on_focus():
+    target = focused_target()
+    if state["down"] and target != state["target"]:
+        on_up(time.monotonic_ns(), commit=False)
+    set_bound(target is not None)
+
+
+def handle(kind, arg):
+    if kind == "down": on_down(arg)
+    elif kind == "up": on_up(arg)
+    elif kind == "begin": on_begin(arg)
+    elif kind == "focus": on_focus()
+    elif kind == "cancel":
+        on_up(time.monotonic_ns(), commit=False)
+        on_focus()
+    elif kind == "reload":
+        on_up(time.monotonic_ns(), commit=False)
+        state["bound"] = False
+        on_focus()
+
+
+def main():
+    lock = open(f"{RUN}/jcode-ptt.lock", "w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return  # Only one daemon can own the binds and microphone.
+    s = socket.socket(socket.AF_UNIX)
+    s.connect(f"{RUN}/hypr/{os.environ['HYPRLAND_INSTANCE_SIGNATURE']}/.socket2.sock")
+    signal.signal(signal.SIGTERM, lambda *_: events.put(("shutdown", 0)))
+    signal.signal(signal.SIGINT, lambda *_: events.put(("shutdown", 0)))
+    srv = start_server()
+    try:
+        threading.Thread(target=watch_focus, args=(s,), daemon=True).start()
+        set_bound(focused_target() is not None, force=True)
+        while True:
+            try:
+                kind, arg = events.get(timeout=0.2)
+                if kind == "shutdown":
+                    break
+                handle(kind, arg)
+            except queue.Empty:
+                on_focus()  # tmux pane changes need no compositor window event.
+            if state["rec"] and time.monotonic() - state["rec"][2] > MAX_SECS:
+                on_up(time.monotonic_ns(), commit=False)
+    finally:
+        on_up(time.monotonic_ns(), commit=False)
+        sh("hyprctl", "keyword", "unbind", ",space")
+        srv.terminate()
+        srv.wait()
+        s.close()
+
+
+if __name__ == "__main__":
+    main()
