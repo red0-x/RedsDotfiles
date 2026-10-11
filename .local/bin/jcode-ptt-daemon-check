@@ -37,7 +37,7 @@ def reset(target=TARGET):
     calls.clear(); timers.clear(); workers.clear()
     ptt.events = queue.Queue()
     ptt.state.update(down=False, rec=None, gen=0, bound=False,
-                     last_up=0, timer=None, target=None)
+                     last_up=0, timer=None, target=None, last_focus=target)
     ptt.threading.Timer = FakeTimer
     ptt.threading.Thread = FakeThread
     ptt.focused_target = lambda: focus
@@ -166,6 +166,32 @@ ptt.on_line(b"activewindowv2>>0xdef")
 drain()
 assert ("pw-stop",) in calls and not ptt.state["down"], "rapid focus-away-and-back kept recording"
 
+# Pending inference cannot append after focus leaves and returns.
+reset()
+held(); ptt.on_up(900)
+ptt.on_line(b"activewindowv2>>0xdef"); drain()
+for fn, args in workers:
+    if fn is ptt.finish: fn(*args)
+assert not any(c[:2] == ("tmux", "send-keys") for c in calls), "stale transcript appended after focus returned"
+
+# Starting a new hold invalidates unfinished inference from the previous hold.
+reset()
+held(); ptt.on_up(900); ptt.on_down(1000)
+for fn, args in workers:
+    if fn is ptt.finish: fn(*args)
+assert not any(c[:2] == ("tmux", "send-keys") for c in calls), "old transcript appended during a new hold"
+
+# A focus transition during inference also invalidates the already-running result.
+reset()
+held(); ptt.on_up(900)
+def interrupted_inference(raw):
+    ptt.handle("cancel", 0)
+    return "old dictated text"
+ptt.transcribe = interrupted_inference
+for fn, args in list(workers):
+    if fn is ptt.finish: fn(*args)
+assert not any(c[:2] == ("tmux", "send-keys") for c in calls), "in-flight stale inference appended"
+
 # Resolve actual process ancestry, rejecting non-Jcode panes and unknown focus.
 child = subprocess.Popen(["sleep", "30"])
 try:
@@ -194,4 +220,4 @@ with ptt.tempfile.NamedTemporaryFile(dir=ptt.RUN) as raw:
     ptt.sh = lambda *a, **k: subprocess.CompletedProcess(a, 22, "HTTP error", "")
     assert real_transcribe(raw.name) == "", "HTTP error appended as dictated text"
 
-print("all 22 push-to-talk safety checks passed")
+print("all 25 push-to-talk safety checks passed")

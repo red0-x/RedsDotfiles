@@ -23,7 +23,7 @@ SYNC = "string:x-canonical-private-synchronous:jcode-ptt"
 
 events = queue.Queue()
 # down: key physically held; rec: (proc, rawpath, t0) while recording; gen: invalidates old timers/loops
-state = {"down": False, "rec": None, "gen": 0, "bound": False, "last_up": 0, "timer": None, "target": None}
+state = {"down": False, "rec": None, "gen": 0, "bound": False, "last_up": 0, "timer": None, "target": None, "last_focus": None}
 
 
 def sh(*a, **k):
@@ -162,12 +162,14 @@ def live_loop(gen, raw):
         time.sleep(LIVE_EVERY)
 
 
-def finish(rec, target):
+def finish(rec, target, gen):
     _, raw, _ = rec
     try:
+        if state["gen"] != gen:
+            return
         notify("Transcribing...", 60000)
         text = transcribe(raw)
-        if focused_target() != target:
+        if focused_target() != target or state["gen"] != gen:
             return
         if text:
             result = sh("tmux", "send-keys", "-l", "-t", target[1], "--", text + " ")
@@ -199,6 +201,7 @@ def on_down(ts):
         return
     state["down"] = True
     state["target"] = target
+    state["last_focus"] = target
     state["gen"] += 1
     t = threading.Timer(HOLD_SECS, lambda g=state["gen"]: events.put(("begin", g)))
     t.daemon = True
@@ -222,6 +225,8 @@ def on_begin(gen):
 def on_up(ts, commit=True):
     state["last_up"] = max(state["last_up"], ts)
     if not state["down"]:
+        if not commit:
+            state["gen"] += 1  # Cancel inference already pending after release.
         return
     state["down"] = False
     state["gen"] += 1
@@ -233,7 +238,7 @@ def on_up(ts, commit=True):
     if rec:
         stop_capture(rec)  # Stop the microphone here, not in a delayed worker.
         if commit and focused_target() == target:
-            threading.Thread(target=finish, args=(rec, target), daemon=True).start()
+            threading.Thread(target=finish, args=(rec, target, state["gen"]), daemon=True).start()
         else:
             Path(rec[1]).unlink(missing_ok=True)
             notify("Recording cancelled", 1500)
@@ -241,8 +246,9 @@ def on_up(ts, commit=True):
 
 def on_focus():
     target = focused_target()
-    if state["down"] and target != state["target"]:
+    if target != state["last_focus"]:
         on_up(time.monotonic_ns(), commit=False)
+        state["last_focus"] = target
     set_bound(target is not None)
 
 
