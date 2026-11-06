@@ -22,6 +22,12 @@ Wallpapers, caches, logs, and generated files are not tracked.
 
 The wallpaper script derives an Everforest-shaped accent from the active wallpaper and feeds it to Matugen. The generated palette updates the desktop, window borders, terminal, tmux, application themes, and other configured apps. The checked-in templates make those settings reproducible; machine-specific wallpapers and generated caches remain local.
 
+## Current rice sync
+
+The `rice-sync-2026-11-06` branch carries the portable Kitty/tmux, Waybar, Rofi, Matugen, Hyprland, BetterDiscord, and Quickshell island updates. Generated palettes, caches, backups, credentials, and machine-specific monitor/GPU/power settings stay local.
+
+Jcode's status islands and the Quickshell overview styling have source patches with pinned base commits and apply instructions in [`patches/README.md`](patches/README.md).
+
 ## Log
 
 ### ThinkPad T495 laptop integration (2026-09-29)

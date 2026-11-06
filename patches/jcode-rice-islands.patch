@@ -1,0 +1,335 @@
+diff --git a/crates/jcode-tui/src/tui/app/run_shell.rs b/crates/jcode-tui/src/tui/app/run_shell.rs
+index 9d1147e6c..76ebbdac6 100644
+--- a/crates/jcode-tui/src/tui/app/run_shell.rs
++++ b/crates/jcode-tui/src/tui/app/run_shell.rs
+@@ -151,7 +151,7 @@ pub(crate) fn slash_command_palette_may_be_visible(
+ /// Statuses whose full status line starts with the primary green circular spinner.
+ ///
+ /// Keep this in sync with `ui_input::draw_status`: these statuses can be safely
+-/// refreshed by the one-cell spinner fast path when the status line is left aligned.
++/// refreshed by the one-cell spinner fast path wherever the island places it.
+ /// Network waits use a static amber retry marker, so they do not belong here.
+ pub(crate) fn status_uses_primary_spinner(status: &ProcessingStatus) -> bool {
+     matches!(
+@@ -621,26 +621,41 @@ impl StatusSpinnerRenderer {
+     }
+ }
+ 
++fn status_spinner_position(buffer: &Buffer, area: Rect) -> Option<(u16, u16)> {
++    (area.y..area.bottom()).find_map(|y| {
++        (area.x..area.right()).find_map(|x| {
++            buffer
++                .cell((x, y))
++                .is_some_and(|cell| {
++                    jcode_tui_style::theme::is_activity_indicator_frame(cell.symbol())
++                })
++                .then_some((x, y))
++        })
++    })
++}
++
+ fn render_status_spinner_into_buffer(buffer: &Buffer, area: Rect, symbol: &str) -> bool {
+-    area.width > 0
+-        && area.height > 0
+-        && buffer
+-            .cell((area.x, area.y))
+-            .is_some_and(|cell| jcode_tui_style::theme::is_activity_indicator_frame(cell.symbol()))
+-        && !symbol.is_empty()
++    !symbol.is_empty() && status_spinner_position(buffer, area).is_some()
+ }
+ 
+ fn render_status_spinner_into_buffer_mut(buffer: &mut Buffer, area: Rect, symbol: &str) {
++    let Some((x, y)) = status_spinner_position(buffer, area) else {
++        return;
++    };
++    let bg = buffer
++        .cell((x, y))
++        .map(|cell| cell.bg)
++        .unwrap_or(ratatui::style::Color::Reset);
+     buffer.set_stringn(
+-        area.x,
+-        area.y,
++        x,
++        y,
+         symbol,
+         1,
+         // The spinner cell is patched outside the full-frame draw, so apply
+-        // light-theme adaptation here explicitly (no-op on dark themes).
+-        Style::default().fg(jcode_tui_style::adapt_foreground_for_display(
++        // light-theme adaptation here explicitly and preserve the island fill.
++        Style::default().bg(bg).fg(jcode_tui_style::adapt_foreground_for_display(
+             jcode_tui_style::theme::ai_color(),
+-            ratatui::style::Color::Reset,
++            bg,
+         )),
+     );
+ }
+diff --git a/crates/jcode-tui/src/tui/app/run_shell_tests.rs b/crates/jcode-tui/src/tui/app/run_shell_tests.rs
+index 641a331a3..1fba9ea78 100644
+--- a/crates/jcode-tui/src/tui/app/run_shell_tests.rs
++++ b/crates/jcode-tui/src/tui/app/run_shell_tests.rs
+@@ -120,6 +120,22 @@ fn primary_spinner_statuses_are_explicit() {
+     ));
+ }
+ 
++#[test]
++fn spinner_fast_path_follows_the_shifted_island_cell() {
++    let area = Rect::new(0, 0, 40, 1);
++    let mut buffer = Buffer::empty(area);
++    let old = jcode_tui_style::theme::activity_indicator(0.0, STATUS_SPINNER_FPS, true);
++    let new = jcode_tui_style::theme::activity_indicator(1.0, STATUS_SPINNER_FPS, true);
++    buffer.set_string(18, 0, old, Style::default().bg(Color::Rgb(30, 32, 25)));
++
++    assert!(render_status_spinner_into_buffer(&buffer, area, new));
++    render_status_spinner_into_buffer_mut(&mut buffer, area, new);
++
++    assert_eq!(buffer.cell((18, 0)).unwrap().symbol(), new);
++    assert_eq!(buffer.cell((18, 0)).unwrap().bg, Color::Rgb(30, 32, 25));
++    assert_eq!(buffer.cell((0, 0)).unwrap().symbol(), " ");
++}
++
+ #[test]
+ fn slash_command_palette_suspends_spinner_fast_path() {
+     assert!(is_slash_command_input("/"));
+diff --git a/crates/jcode-tui/src/tui/app/tests/scroll_copy_01/part_01.rs b/crates/jcode-tui/src/tui/app/tests/scroll_copy_01/part_01.rs
+index 058db1bc1..16ec55d39 100644
+--- a/crates/jcode-tui/src/tui/app/tests/scroll_copy_01/part_01.rs
++++ b/crates/jcode-tui/src/tui/app/tests/scroll_copy_01/part_01.rs
+@@ -1330,27 +1330,27 @@ fn retained_frame_row_matches_the_rendered_screen() {
+ }
+ 
+ /// Real App: the session status line is always pinned as the last row, with
+-/// a pink model, and scrolling (up or down, at the bottom or not) never hides
+-/// it or shows an elastic countdown.
++/// the wallpaper model accent, and scrolling (up or down, at the bottom or not)
++/// never hides it or shows an elastic countdown.
+ #[test]
+-fn status_line_is_always_pinned_with_pink_model_on_real_app() {
++fn status_line_is_always_pinned_with_palette_model_on_real_app() {
+     let _lock = scroll_render_test_lock();
+     for width in [120u16, 60] {
+         let (mut app, mut terminal) = create_scroll_test_app(width, 30, 0, 36);
+-        let pink = ratatui::style::Color::Rgb(255, 135, 200);
+-        let last_row_pink_cells = |terminal: &ratatui::Terminal<ratatui::backend::TestBackend>| {
++        let accent = crate::tui::wallpaper::wallpaper().tertiary;
++        let last_row_accent_cells = |terminal: &ratatui::Terminal<ratatui::backend::TestBackend>| {
+             let buf = terminal.backend().buffer();
+             let y = buf.area.height - 1;
+             (0..buf.area.width)
+-                .filter(|&x| buf[(x, y)].fg == pink && buf[(x, y)].symbol().trim() != "")
++                .filter(|&x| buf[(x, y)].fg == accent && buf[(x, y)].symbol().trim() != "")
+                 .count()
+         };
+ 
+         let at_rest = render_and_snap(&app, &mut terminal);
+         assert!(!at_rest.contains("(overscroll"), "w={width}: {at_rest}");
+         assert!(
+-            last_row_pink_cells(&terminal) >= 3,
+-            "pinned pink model at rest (w={width}): {at_rest}"
++            last_row_accent_cells(&terminal) >= 3,
++            "pinned palette model at rest (w={width}): {at_rest}"
+         );
+ 
+         for kind in [
+@@ -1367,7 +1367,7 @@ fn status_line_is_always_pinned_with_pink_model_on_real_app() {
+             let frame = render_and_snap(&app, &mut terminal);
+             assert!(!frame.contains("(overscroll"), "w={width}: {frame}");
+             assert!(
+-                last_row_pink_cells(&terminal) >= 3,
++                last_row_accent_cells(&terminal) >= 3,
+                 "status line stays pinned after {kind:?} (w={width}): {frame}"
+             );
+         }
+diff --git a/crates/jcode-tui/src/tui/ui_input.rs b/crates/jcode-tui/src/tui/ui_input.rs
+index 701b43421..af7c94012 100644
+--- a/crates/jcode-tui/src/tui/ui_input.rs
++++ b/crates/jcode-tui/src/tui/ui_input.rs
+@@ -994,13 +994,33 @@ pub(super) fn draw_status(frame: &mut Frame, app: &dyn TuiState, area: Rect, pen
+ 
+     crate::memory::check_staleness();
+ 
+-    if app.centered_mode() {
+-        frame.render_widget(Paragraph::new(line.alignment(Alignment::Center)), area);
+-        return;
+-    }
++    let line = chrome_island_line(
++        line,
++        area.width,
++        crate::tui::wallpaper::wallpaper().surface_container,
++    );
+     frame.render_widget(Paragraph::new(line), area);
+ }
+ 
++/// Float transient chrome in a palette-painted pill without reserving another
++/// row. The content contracts to the terminal width before the caps go on.
++fn chrome_island_line(
++    line: Line<'static>,
++    width: u16,
++    bg: Color,
++) -> Line<'static> {
++    if line.width() == 0 {
++        return line;
++    }
++    if width < 6 {
++        return Line::from(overscroll_truncate_spans(line.spans, usize::from(width)))
++            .alignment(Alignment::Center);
++    }
++    let spans = overscroll_truncate_spans(line.spans, usize::from(width - 4));
++    Line::from(overscroll_pill_spans(&[StatusPill { bg, spans }]))
++        .alignment(Alignment::Center)
++}
++
+ fn running_tool_header_spans(
+     spinner: &'static str,
+     name: &str,
+@@ -1873,7 +1893,12 @@ pub(super) fn notification_height(app: &dyn TuiState, width: u16) -> u16 {
+ }
+ 
+ pub(super) fn draw_notification(frame: &mut Frame, app: &dyn TuiState, area: Rect) {
+-    frame.render_widget(Paragraph::new(notification_lines(app, area.width)), area);
++    let bg = crate::tui::wallpaper::wallpaper().secondary_container;
++    let lines = notification_lines(app, area.width)
++        .into_iter()
++        .map(|line| chrome_island_line(line, area.width, bg))
++        .collect::<Vec<_>>();
++    frame.render_widget(Paragraph::new(lines), area);
+ }
+ 
+ /// Draw the session status line, pinned directly below the input. Shows the
+diff --git a/crates/jcode-tui/src/tui/ui_tests/basic/frame_flicker.rs b/crates/jcode-tui/src/tui/ui_tests/basic/frame_flicker.rs
+index 764c04766..a1c1ea7b9 100644
+--- a/crates/jcode-tui/src/tui/ui_tests/basic/frame_flicker.rs
++++ b/crates/jcode-tui/src/tui/ui_tests/basic/frame_flicker.rs
+@@ -1089,7 +1089,7 @@ fn test_reset_expiry_notification_stays_on_one_row() {
+             .flat_map(|y| (0..width).map(move |x| (x, y)))
+             .map(|cell| buffer[cell].symbol())
+             .collect();
+-        assert!(rendered.starts_with("2 resets available"));
++        assert!(rendered.contains("2 resets available"), "{rendered}");
+     }
+ }
+ 
+@@ -1131,10 +1131,7 @@ fn test_reset_notice_relative_expiry_render_and_removal() {
+                 .collect()
+         })
+         .collect();
+-    assert_eq!(
+-        rows[1].trim(),
+-        "2 resets available · expires in 3d 2h · /reset"
+-    );
++    assert!(rows[1].contains("2 resets available · expires in 3d 2h · /reset"));
+     assert!(rows[0].trim().is_empty() && rows[2].trim().is_empty());
+     println!("VISIBLE: {} [exactly one occupied row]", rows[1].trim());
+     state.openai_reset_hint = None;
+diff --git a/crates/jcode-tui/src/tui/ui_tests/basic/redraw_cadence.rs b/crates/jcode-tui/src/tui/ui_tests/basic/redraw_cadence.rs
+index ff4722498..64a38e8d4 100644
+--- a/crates/jcode-tui/src/tui/ui_tests/basic/redraw_cadence.rs
++++ b/crates/jcode-tui/src/tui/ui_tests/basic/redraw_cadence.rs
+@@ -47,6 +47,76 @@ fn oauth_notice_owns_the_rendered_status_line_while_processing() {
+     assert!(!text.contains("Sending"), "{text}");
+ }
+ 
++#[test]
++fn processing_status_island_is_centered_and_rice_painted() {
++    let _guard = viewport_snapshot_test_lock();
++    let mut state = static_chrome_state(None);
++    state.status = ProcessingStatus::Sending;
++    state.centered_mode = false;
++    let backend = ratatui::backend::TestBackend::new(80, 1);
++    let mut terminal = ratatui::Terminal::new(backend).unwrap();
++
++    terminal
++        .draw(|frame| crate::tui::ui::input_ui::draw_status(frame, &state, frame.area(), 0))
++        .unwrap();
++
++    let buffer = terminal.backend().buffer();
++    let text = buffer
++        .content
++        .iter()
++        .map(|cell| cell.symbol())
++        .collect::<String>();
++    assert!(text.contains("sending"), "{text}");
++    assert!(text.contains('\u{e0b6}'), "missing left cap: {text}");
++    assert!(text.contains('\u{e0b4}'), "missing right cap: {text}");
++    let first_ink = buffer
++        .content
++        .iter()
++        .position(|cell| cell.symbol() != " ")
++        .unwrap();
++    assert!(first_ink > 0, "island should float in from the left: {text}");
++    let bg = crate::tui::wallpaper::wallpaper().surface_container;
++    assert!(
++        buffer
++            .content
++            .iter()
++            .any(|cell| cell.symbol() == "s" && cell.bg == bg),
++        "status text should sit on the wallpaper surface: {text}"
++    );
++}
++
++#[test]
++fn notification_status_island_uses_the_same_rice_chrome() {
++    let _guard = viewport_snapshot_test_lock();
++    let state = static_chrome_state(Some("Worker finished"));
++    let backend = ratatui::backend::TestBackend::new(60, 1);
++    let mut terminal = ratatui::Terminal::new(backend).unwrap();
++
++    terminal
++        .draw(|frame| {
++            crate::tui::ui::input_ui::draw_notification(frame, &state, frame.area())
++        })
++        .unwrap();
++
++    let buffer = terminal.backend().buffer();
++    let text = buffer
++        .content
++        .iter()
++        .map(|cell| cell.symbol())
++        .collect::<String>();
++    assert!(text.contains("Worker finished"), "{text}");
++    assert!(text.contains('\u{e0b6}'), "missing left cap: {text}");
++    assert!(text.contains('\u{e0b4}'), "missing right cap: {text}");
++    let bg = crate::tui::wallpaper::wallpaper().secondary_container;
++    assert!(
++        buffer
++            .content
++            .iter()
++            .any(|cell| cell.symbol() == "W" && cell.bg == bg),
++        "notification should use the secondary rice surface: {text}"
++    );
++}
++
+ fn full_tier_policy() -> crate::perf::TuiPerfPolicy {
+     // Build from the real policy so a new field cannot silently drift, then pin
+     // the parts these assertions depend on. The host's load average must not
+diff --git a/crates/jcode-tui/src/tui/ui_tests/swarm_buffer.rs b/crates/jcode-tui/src/tui/ui_tests/swarm_buffer.rs
+index 6ee13fd94..4ac0cd4e0 100644
+--- a/crates/jcode-tui/src/tui/ui_tests/swarm_buffer.rs
++++ b/crates/jcode-tui/src/tui/ui_tests/swarm_buffer.rs
+@@ -514,7 +514,7 @@ fn draw_notification_clips_overwide_notice_at_area_width() {
+         .iter()
+         .collect();
+     assert!(
+-        inside.starts_with("Swarm plan v3"),
++        inside.contains("Swarm plan v3"),
+         "expected clipped notice text inside area, got: {inside:?}"
+     );
+ }
+@@ -614,7 +614,7 @@ fn overscroll_line_compact_steps_at_medium_width() {
+ }
+ 
+ #[test]
+-fn overscroll_model_is_pink() {
++fn overscroll_model_uses_wallpaper_tertiary() {
+     let _lock = viewport_snapshot_test_lock();
+     clear_flicker_frame_history_for_tests();
+     let state = overscroll_line_state();
+@@ -639,7 +639,7 @@ fn overscroll_model_is_pink() {
+         .expect("model on overscroll line");
+     assert_eq!(
+         buf[(col, y)].fg,
+-        ratatui::style::Color::Rgb(255, 135, 200),
++        crate::tui::wallpaper::wallpaper().tertiary,
+         "{row}"
+     );
+ }

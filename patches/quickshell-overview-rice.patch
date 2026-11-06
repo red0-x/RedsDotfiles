@@ -1,0 +1,93 @@
+diff --git a/modules/overview/Overview.qml b/modules/overview/Overview.qml
+index 57c9187..a528f4c 100644
+--- a/modules/overview/Overview.qml
++++ b/modules/overview/Overview.qml
+@@ -323,11 +323,22 @@ Scope {
+         const group = Math.floor((baseId - workspaceOffset - 1) / workspacesPerGroup);
+         const minWorkspaceId = group * workspacesPerGroup + 1 + workspaceOffset;
+         const maxWorkspaceId = minWorkspaceId + workspacesPerGroup - 1;
+-        let next = baseId + direction;
+-        if (next > maxWorkspaceId)
+-            next = minWorkspaceId;
+-        else if (next < minWorkspaceId)
+-            next = maxWorkspaceId;
++        // Only stop on workspaces that actually have windows (plus the active one);
++        // tabs should walk real windows, not empty grid cells.
++        const occupied = new Set(Hyprland.toplevels.values
++            .map(t => t.workspace?.id ?? -1)
++            .filter(id => id >= 1));
++        occupied.add(Hyprland.focusedMonitor?.activeWorkspace?.id ?? 1);
++        let next = baseId;
++        for (let i = 0; i < workspacesPerGroup; i++) {
++            next += direction;
++            if (next > maxWorkspaceId)
++                next = minWorkspaceId;
++            else if (next < minWorkspaceId)
++                next = maxWorkspaceId;
++            if (occupied.has(next))
++                break;
++        }
+         GlobalStates.overviewSelectedWorkspaceId = next;
+     }
+ 
+diff --git a/modules/overview/OverviewWidget.qml b/modules/overview/OverviewWidget.qml
+index 050d619..b7b8ea7 100644
+--- a/modules/overview/OverviewWidget.qml
++++ b/modules/overview/OverviewWidget.qml
+@@ -28,7 +28,7 @@ Item {
+     property var workspaceIds: HyprlandData.workspaceIds
+     property var monitorData: HyprlandData.monitors.find(m => m.id === root.monitor?.id)
+     property real scale: Config.options.overview.scale
+-    property color activeBorderColor: Appearance.colors.colSecondary
++    property color activeBorderColor: Appearance.colors.colPrimary
+ 
+     property real workspaceImplicitWidth: Math.round((monitorData?.transform % 2 === 1) ?
+         ((monitor.height / monitor.scale - (monitorData?.reserved?.[0] ?? 0) - (monitorData?.reserved?.[2] ?? 0)) * root.scale) :
+@@ -912,7 +912,7 @@ Item {
+                 height: root.workspaceImplicitHeight
+                 color: "transparent"
+                 radius: Appearance.rounding.screenRounding * root.scale
+-                border.width: 2
++                border.width: 3
+                 border.color: root.activeBorderColor
+                 Behavior on x {
+                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+diff --git a/modules/overview/WorkspaceStrip.qml b/modules/overview/WorkspaceStrip.qml
+index a6a07fb..31a6716 100644
+--- a/modules/overview/WorkspaceStrip.qml
++++ b/modules/overview/WorkspaceStrip.qml
+@@ -81,19 +81,19 @@ Item {
+             border.color: ColorUtils.applyAlpha(Appearance.colors.colLayer2Border, overview.glassMode ? overview.glassBorderOpacity : 0.65)
+ 
+             Rectangle {
++                id: stripHeader
+                 anchors.left: parent.left
+                 anchors.right: parent.right
+                 anchors.top: parent.top
+-                height: Math.max(18 * overview.scale, root.specialStripPadding + root.specialStripTitleHeight * 0.8)
++                height: root.specialStripPadding * 1.5 + root.specialStripTitleHeight
+                 radius: parent.radius
+                 color: ColorUtils.applyAlpha(Appearance.colors.colSecondary, overview.glassMode ? 0.12 : 0.08)
+             }
+ 
+             StyledText {
+                 anchors.left: parent.left
+-                anchors.top: parent.top
+-                anchors.leftMargin: root.specialStripPadding
+-                anchors.topMargin: root.specialStripPadding
++                anchors.verticalCenter: stripHeader.verticalCenter
++                anchors.leftMargin: root.specialStripPadding + 6
+                 text: root.title
+                 font.family: Appearance.font.family.title
+                 font.pixelSize: root.specialStripTitleHeight
+@@ -448,8 +448,8 @@ Item {
+                             text: overview.draggingTargetStripWorkspace === overview.createSpecialWorkspaceTarget ? "Release" : "+"
+                             font.family: Appearance.font.family.expressive
+                             font.pixelSize: overview.draggingTargetStripWorkspace === overview.createSpecialWorkspaceTarget
+-                                ? Appearance.font.pixelSize.larger * overview.scale
+-                                : Appearance.font.pixelSize.huge * 1.25 * overview.scale
++                                ? Appearance.font.pixelSize.larger
++                                : Appearance.font.pixelSize.huge * 2
+                             font.weight: Font.DemiBold
+                             color: ColorUtils.applyAlpha(Appearance.colors.colOnLayer1, 0.92)
+                             horizontalAlignment: Text.AlignHCenter

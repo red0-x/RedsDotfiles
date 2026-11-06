@@ -5,18 +5,6 @@
 # |__/|__/\_,_/_/_/ .__/\_,_/ .__/\__/_/   
 #                /_/       /_/             
 
-# Serialize wallpaper changes: without this, mashing the wallpaper keybind runs
-# several copies at once (matugen + waybar/dock restarts + hyprctl) that race and
-# make the wallpaper flicker between images.
-if [ -z "$WALLPAPER_SH_LOCKED" ]; then
-    mkdir -p "$HOME/.cache/ml4w"
-    export WALLPAPER_SH_LOCKED=1
-    # -o closes the lock fd before exec'ing: without it the long-lived children we
-    # restart below (waybar, nwg-dock) inherit it and hold the lock forever, so
-    # every later wallpaper change blocks on flock and never applies.
-    exec flock -x -o "$HOME/.cache/ml4w/wallpaper.lock" "$0" "$@"
-fi
-
 # Source library.sh
 source $HOME/.config/ml4w/library.sh
 
@@ -125,15 +113,6 @@ if [ -f $wallpapereffect ]; then
         waypaper --wallpaper $used_wallpaper
     else
         _writeLog "Wallpaper effect is set to off"
-        # No effect, so nothing above touched hyprpaper. Apply it here, otherwise
-        # the displayed wallpaper can stay stale/out of sync with the cache file.
-        # hyprpaper 0.8.x rejects `reload`; preload+wallpaper is the supported path
-        # and "," (all monitors) is not accepted either, so target each output.
-        hyprctl hyprpaper preload "$used_wallpaper" >/dev/null 2>&1
-        for m in $(hyprctl -j monitors | grep -oP '"name": "\K[^"]+'); do
-            hyprctl hyprpaper wallpaper "$m,$used_wallpaper" >/dev/null
-        done
-        hyprctl hyprpaper unload unused >/dev/null 2>&1
     fi
 else
     effect="off"
@@ -150,25 +129,29 @@ THEME_PREF=$(grep -E '^gtk-application-prefer-dark-theme=' "$SETTINGS_FILE" | aw
 # Execute matugen
 # -----------------------------------------------------
 
-# Fedora's system Python has Pillow; Homebrew's Python may shadow it.
-rice_accent=$(/usr/bin/python3 "$HOME/.config/hypr/scripts/wallcolors.py" "$used_wallpaper")
-if [[ "$rice_accent" =~ ^#[0-9a-fA-F]{6}$ ]]; then
-    if command -v tmux >/dev/null && tmux ls >/dev/null 2>&1; then
-        tmux source-file -q "$HOME/.config/tmux/rice-colors.conf"
-    fi
-    pkill -USR2 -x cava 2>/dev/null || true
-else
-    _writeLog "Rice palette unavailable, retaining existing palette"
+# Rice palette: Everforest-shaped colors rotated to the wallpaper's
+# dominant hue (waybar, walker, hypr borders, cava). Prints the accent.
+rice_accent=$(python3 $HOME/.config/hypr/scripts/wallcolors.py "$used_wallpaper" 2>/dev/null)
+_writeLog "Rice accent: $rice_accent"
+
+# live-recolor running tmux server
+if command -v tmux >/dev/null && tmux ls >/dev/null 2>&1; then
+    tmux source-file -q ~/.config/tmux/rice-colors.conf
 fi
 
-_writeLog "Execute matugen with $used_wallpaper"
+# live-recolor running cava (SIGUSR2 = reload colors only)
+pkill -USR2 -x cava 2>/dev/null
+
 # matugen may not be installed; resolve via PATH and skip rather than erroring out.
 matugen_bin=$(command -v matugen || echo "$HOME/.cargo/bin/matugen")
 if [ -x "$matugen_bin" ]; then
     if [ "$THEME_PREF" = 1 ]; then matugen_mode="dark"; else matugen_mode="light"; fi
     if [[ "$rice_accent" =~ ^#[0-9a-fA-F]{6}$ ]]; then
+        # seed matugen from the same accent so kitty/rofi/swaync/gtk/hyprlock match
+        _writeLog "Execute matugen with accent $rice_accent"
         "$matugen_bin" color hex "$rice_accent" -m "$matugen_mode"
     else
+        _writeLog "Execute matugen with $used_wallpaper"
         "$matugen_bin" image "$used_wallpaper" -m "$matugen_mode"
     fi
 else

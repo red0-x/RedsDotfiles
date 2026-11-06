@@ -20,7 +20,7 @@
       "default": ""
     },
     "persistent-workspaces": {
-            "*": 5
+            "*": 1
     }
   },
   // Taskbar
@@ -44,7 +44,7 @@
   },
   // Hyprland Window
   "hyprland/window": {
-    "max-length": 60,
+    "max-length": 32,
     "rewrite": {
       "(.*) - Brave": "$1",
       "(.*) - Chromium": "$1",
@@ -92,6 +92,18 @@
     "on-click-middle": "sleep 0.1 && ~/.config/ml4w/scripts/cliphist.sh w",
     "tooltip-format": "Left: Open clipboard Manager\nRight: Delete an entry\nMiddle: Clear list"
   },
+  // Discord Rich Presence (empty unless an activity is live)
+  "custom/discord": {
+    "format": "{}",
+    "return-type": "json",
+    "exec": "~/.config/waybar/scripts/discord-rpc.sh",
+    "restart-interval": 2,
+    "interval": 2,
+    "hide-empty-text": true,
+    "on-click": "qs ipc -c island call island open discord",
+    "on-click-right": "hyprctl dispatch focuswindow class:^(discord|Discord|vesktop|Vesktop)$",
+    "tooltip": true
+  },
   // Updates Count
   "custom/updates": {
     "format": "  {}",
@@ -101,7 +113,8 @@
     "interval": 1800,
     "signal": 1,
     "hide-empty-text": true,
-    "on-click": "~/.config/ml4w/settings/installupdates.sh"
+    "on-click": "qs ipc -c island call island open updates",
+    "on-click-right": "~/.config/ml4w/settings/installupdates.sh"
   },
   // Wallpaper
   "custom/wallpaper": {
@@ -145,9 +158,9 @@
     // START APPS LABEL
     "format": "Apps",
     // END APPS LABEL
-    "on-click": "~/.config/hypr/scripts/launcher.sh",
-    "on-click-right": "~/.config/hypr/scripts/keybindings.sh",
-    "tooltip-format": "Left: Open the application launcher\nRight: Show all keybindings"
+    "on-click": "qs ipc -c island call island open apps",
+    "on-click-right": "~/.config/hypr/scripts/launcher.sh",
+    "tooltip-format": "Left: Island app launcher\nRight: Rofi launcher"
   },
   // Rofi Application Launcher
   "custom/appmenuicon": {
@@ -211,55 +224,53 @@
       "unlocked": ""
     }
   },
-  // System tray
+  // Reserved slot: the quickshell tray overlay draws here
+  "custom/tray-space": { "format": "", "tooltip": false },
+  // System tray (unused: replaced by the quickshell tray)
   "tray": {
-    "icon-size": 21,
-    "spacing": 10
+    "icon-size": 15,
+    "spacing": 7
   },
   // Clock
   "clock": {
-        "format": "{:%H:%M - %Od.%Om.%y}",
+        "format": "{:%H:%M}",
+    "tooltip-format": "{:%A %d %B %Y}",
     "on-click": "flatpak run com.ml4w.calendar",
     "timezone": "",
-    "tooltip": false
+    "tooltip": true
   },
   // System
   "custom/system": {
     "format": "",
-    "tooltip": false
+    "exec": "~/.config/waybar/scripts/disk.sh",
+    "return-type": "json",
+    "interval": 60
   },
   // CPU
   "cpu": {
-    "format": "/ C {usage}% ",
+    "interval": 3,
+    "format": "\uf2db {usage}%",
     "on-click": "~/.config/ml4w/settings/system-monitor.sh"
   },
-  // CPU governor / boost
-  "custom/cpugovernor": {
-    "exec": "~/.config/waybar/scripts/cpu-governor.sh",
+  // GPU (nvidia)
+  "custom/gpu": {
+    "exec": "~/.config/waybar/scripts/gpu.sh",
     "return-type": "json",
-    "interval": 5,
-    "signal": 9,
-    "format": "/ {}",
-    "on-click": "~/.config/waybar/scripts/cpu-governor.sh toggle"
-  },
-  // CPU temperature
-  "custom/cputemp": {
-    "exec": "~/.config/waybar/scripts/cpu-temp.sh",
-    "return-type": "json",
-    "interval": 5,
-    "signal": 10,
-    "format": "/ {}",
+    "interval": 3,
+    "format": "\uf26c {}",
     "on-click": "~/.config/ml4w/settings/system-monitor.sh"
   },
   // Memory
   "memory": {
-    "format": "/ M {}% ",
+    "interval": 5,
+    "format": "\uf538 {}%",
+    "tooltip-format": "RAM {used:0.1f} / {total:0.1f} GiB",
     "on-click": "~/.config/ml4w/settings/system-monitor.sh"
   },
   // Harddisc space used
   "disk": {
     "interval": 30,
-    "format": "D {percentage_used}% ",
+    "format": "\uf0a0 {percentage_used}%",
     "path": "/",
     "on-click": "~/.config/ml4w/settings/system-monitor.sh"
   },
@@ -276,12 +287,9 @@
     },
     "modules": [
       "custom/system",
-      "disk",
       "cpu",
-      "custom/cpugovernor",
-      "custom/cputemp",
-      "memory",
-      "hyprland/language"
+      "custom/gpu",
+      "memory"
     ]
   },
   // Group Tools
@@ -325,7 +333,7 @@
   // Network
   "network": {
     "format": "{ifname}",
-    "format-wifi": " {signalStrength}%",
+    "format-wifi": "",
     "format-ethernet": "  {ifname}",
     "format-disconnected": "Disconnected ⚠",
     "tooltip-format": " {ifname} via {gwaddri}",
@@ -333,8 +341,8 @@
     "tooltip-format-ethernet": " {ifname}\nIP: {ipaddr}\n up: {bandwidthUpBits} down: {bandwidthDownBits}",
     "tooltip-format-disconnected": "Disconnected",
     "max-length": 50,
-    "on-click": "~/.config/ml4w/settings/networkmanager.sh",
-    "on-click-right": "~/.config/ml4w/scripts/nm-applet.sh toggle",
+    "on-click": "qs ipc -c island call island open wifi",
+    "on-click-right": "~/.config/ml4w/settings/networkmanager.sh",
   },
   // Battery
   "battery": {
@@ -396,11 +404,12 @@
   },
   // Bluetooth
   "bluetooth": {
-    "format": " {status}",
+    "format": "", "format-connected": " {num_connections}",
     "format-disabled": "",
     "format-off": "",
     "interval": 30,
-    "on-click": "sleep 0.1 && ~/.config/ml4w/settings/bluetooth.sh",
+    "on-click": "qs ipc -c island call island open bt",
+    "on-click-right": "sleep 0.1 && ~/.config/ml4w/settings/bluetooth.sh",
     "format-no-controller": ""
   },
   // Other

@@ -12,8 +12,7 @@ _launch_walker() {
 
 # Use Rofi
 _launch_rofi() {
-    export PATH="$HOME/.local/bin:$PATH"
-    pkill rofi || rofi -show combi -replace -i
+    pkill rofi || rofi -show drun -replace -i
 }
 
 if [ "$launcher" == "walker" ]; then

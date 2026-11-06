@@ -351,7 +351,7 @@ window#waybar.empty #window {
  * Hardware Group
  * ----------------------------------------------------- */
 
-#disk,#memory,#cpu,#language,#custom-cpugovernor,#custom-cputemp {
+#disk,#memory,#cpu,#language {
     margin:0px;
     padding:0px;
     font-size:16px;
@@ -515,23 +515,4 @@ window#waybar.empty #window {
 
 #tray > .needs-attention {
     -gtk-icon-effect: highlight;
-}
-
-
-
-/* CPU governor / temperature */
-#custom-cpugovernor.performance {
-    color: #f38ba8;
-}
-
-#custom-cpugovernor.powersave {
-    color: #a6e3a1;
-}
-
-#custom-cputemp.warning {
-    color: #f9e2af;
-}
-
-#custom-cputemp.critical {
-    color: #f38ba8;
 }

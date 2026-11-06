@@ -102,3 +102,8 @@ post_hook = '~/.spicetify/spicetify refresh -n >/dev/null 2>&1'
 [templates.ghdesktop]
 input_path = '~/.config/matugen/templates/ghdesktop-glass.css'
 output_path = '~/.config/ghdesktop-glass/ghdesktop-glass.css'
+
+[templates.quickshell_overview]
+input_path = '~/.config/matugen/templates/quickshell-overview.qml'
+output_path = '~/.config/quickshell/overview/common/Appearance.colors.qml'
+post_hook = 'qs kill -c overview >/dev/null 2>&1; setsid qs -c overview -d >/dev/null 2>&1 &'
