@@ -13,16 +13,13 @@
     ],
     // Modules Left
     "modules-left": [
+        "custom/discord",
         "custom/appmenu",
-        //"wlr/taskbar",
-        //"group/quicklinks",
         "hyprland/window",
         "custom/empty"
     ],
-    // Modules Center
-    "modules-center": [
-        "hyprland/workspaces"
-    ],
+    // Modules Center — kept empty: the quickshell island lives there
+    "modules-center": [],
     // Modules Right    
     "modules-right": [
         "custom/updates",
@@ -34,12 +31,22 @@
         "group/hardware",
         "group/tools",
         "custom/ime",
-        "tray",
         "custom/notification",
         "custom/exit",
-        "custom/ml4w-welcome",
         "clock"
     ],
+    // Now playing: click play/pause, scroll skip
+    "mpris": {
+        "format": "{status_icon}  {title} · {artist}",
+        "format-paused": "{status_icon}  {title}",
+        "format-stopped": "",
+        "status-icons": { "playing": "", "paused": "" },
+        "title-len": 28,
+        "artist-len": 18,
+        "on-scroll-up": "playerctl next",
+        "on-scroll-down": "playerctl previous",
+        "tooltip-format": "{player}: {title} · {artist}\n{album}"
+    },
     // IME layout indicator (ibus) — click to toggle us<->cn pinyin
     "custom/ime": {
         "exec": "~/.config/hypr/scripts/ime-status.sh",

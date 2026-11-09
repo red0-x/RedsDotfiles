@@ -1,0 +1,11 @@
+[Unit]
+Description=Watch for Discord host updates that wipe BetterDiscord
+
+[Path]
+# Watch the stable launcher symlink, not the whole config dir. Writing the
+# reinjected index.js under ~/.config/discord used to retrigger this path.
+PathChanged=%h/.config/discord/Discord
+Unit=bd-reinject.service
+
+[Install]
+WantedBy=default.target

@@ -120,8 +120,8 @@ element {
 }
 
 element selected.normal {
-    background-color:            @surface;
-    text-color:                  @on-surface;
+    background-color:            @primary;
+    text-color:                  @on-primary;
     border-radius:               1.5em;
 }
 

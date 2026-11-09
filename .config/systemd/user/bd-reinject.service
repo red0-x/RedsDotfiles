@@ -1,0 +1,7 @@
+[Unit]
+Description=Re-inject BetterDiscord into Discord after a host update
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/bd-reinject.sh

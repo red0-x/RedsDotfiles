@@ -12,9 +12,34 @@
   --dt_color-base-inv-hgl-1: {{colors.primary.default.hex}} !important;
   --p-team_sidebar__nav-bg: transparent !important;
 }
-html, body, .p-client_container, .p-ia4_client { background: transparent !important; }
+/* transparent only for the main client; external huddle windows stay opaque */
+html:not([data-external-huddle-boot='true']):has(body.p-ia4_body),
+html:not([data-external-huddle-boot='true']) body.p-ia4_body,
+html:not([data-external-huddle-boot='true']) body.p-ia4_body .p-client_container,
+html:not([data-external-huddle-boot='true']) body.p-ia4_body .p-ia4_client { background: transparent !important; }
 /* kill Slack's purple workspace gradient */
-.p-theme_background { background: none !important; }
+html:not([data-external-huddle-boot='true']) body.p-ia4_body .p-theme_background { background: none !important; }
+/* any other Slack surface (auth, external huddle) is opaque */
+body:not(.p-ia4_body) { background: {{colors.surface.default.hex}} !important; }
+/* a huddle window is a separate page; never make it see-through */
+html[data-external-huddle-boot='true'],
+html[data-external-huddle-boot='true'] body,
+html[data-external-huddle-boot='true'] .p-client_container,
+html[data-external-huddle-boot='true'] .p-ia4_client,
+html[data-external-huddle-boot='true'] .p-theme_background {
+  background: {{colors.surface.default.hex}} !important;
+}
+/* in-window huddle panel: an opaque glass sheet, not the page tint */
+.p-huddle_workspace {
+  background: color-mix(in srgb, {{colors.surface_container.default.hex}} 96%, transparent) !important;
+  border-left: 1px solid rgba(255,255,255,0.08) !important;
+  backdrop-filter: blur(18px) saturate(130%) !important;
+}
+/* narrow windows: one pane at a time instead of a clipped 40px column */
+@media (max-width: 600px) {
+  .p-client_workspace__tabpanel { grid-template-columns: 0 minmax(0, 1fr) !important; }
+  .p-view_contents--sidebar, .p-resizer { display: none !important; }
+}
 .p-view_contents, .p-threads_view, .p-multi_thread_background,
 .c-message_kit__background, .c-virtual_list__scroll_container,
 .p-workspace__primary_view_body { background-color: var(--dt_color-base-pry) !important; }
