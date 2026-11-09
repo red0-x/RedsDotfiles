@@ -61,7 +61,7 @@ PanelWindow {
             || ctx.upState === "failed" || ctx.upState === "checking") ? 168 : 316)
         : win.mode === "apps" ? 424
         : win.mode === "discord" ? 452
-        : win.mode === "hub" ? 118 : win.mode === "bt" ? 290 : 300
+        : win.mode === "hub" ? 118 : win.mode === "pods" ? 96 : win.mode === "bt" ? 290 : 300
 
     onModeChanged: {
         ctx.cardOpen = mode !== "";
@@ -245,7 +245,7 @@ PanelWindow {
                     : win.mode === "updates" ? ((ctx.upState === "running" || ctx.upState === "done" || ctx.upState === "failed" || ctx.upState === "checking") ? 168 : 316)
                     : win.mode === "apps" ? 424
                     : win.mode === "discord" ? 452
-        : win.mode === "hub" ? 118 : win.mode === "bt" ? 290 : 300
+        : win.mode === "hub" ? 118 : win.mode === "pods" ? 96 : win.mode === "bt" ? 290 : 300
             radius: 22
             color: ctx.glass(0.74)
             border.width: 1
@@ -1085,6 +1085,50 @@ PanelWindow {
                     Btn { glyph: "\uf019"; text: "Updates"; primary: ctx.upAll.length > 0; onClicked: ctx.show("updates") }
                     Btn { glyph: "\uf1eb"; text: "Wi‑Fi"; primary: ctx.netUp; onClicked: ctx.show("wifi") }
                     Btn { glyph: "\uf293"; text: "Bluetooth"; primary: ctx.btConnected.length > 0; onClicked: ctx.show("bt") }
+                }
+            }
+
+            // ==================================================== AIRPODS
+            Item {
+                anchors.fill: parent
+                anchors.margins: 14
+                visible: win.mode === "pods"
+                opacity: win.mode === "pods" ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 180 } }
+                Row {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 14
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "\uf025"; color: ctx.cAccL
+                        font.family: ctx.iconFont; font.weight: Font.Black; font.pixelSize: 26
+                    }
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 150
+                        Text { text: ctx.podsDev?.name ?? "AirPods"; color: ctx.cFg; font.family: ctx.font; font.pixelSize: 14; elide: Text.ElideRight; width: parent.width }
+                        Text {
+                            text: ctx.podsDev ? (ctx.podsTray ? "connected" : "connected · librepods off") : "disconnected"
+                            color: ctx.cDim; font.family: ctx.font; font.pixelSize: 10
+                        }
+                    }
+                    Repeater {
+                        model: ctx.podsBatt.headset >= 0
+                            ? [{ k: "Headset", v: ctx.podsBatt.headset }]
+                            : [{ k: "L", v: ctx.podsBatt.left }, { k: "R", v: ctx.podsBatt.right }, { k: "Case", v: ctx.podsBatt.cas }]
+                        delegate: Column {
+                            required property var modelData
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 3
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: modelData.v > 0 ? modelData.v + "%" : "–"
+                                color: modelData.v > 0 && modelData.v <= 20 ? ctx.cRed : ctx.cFg
+                                font.family: ctx.font; font.pixelSize: 13
+                            }
+                            Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.k; color: ctx.cDim; font.family: ctx.font; font.pixelSize: 9 }
+                        }
+                    }
                 }
             }
         }

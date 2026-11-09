@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+"""Push one toast into the quickshell overlay: rice-toast <app> <summary> [body]"""
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+OUT = Path.home() / ".cache" / "rice-toasts.json"
+
+
+def main() -> None:
+    app = (sys.argv[1] if len(sys.argv) > 1 else "Notification").strip()
+    summary = (sys.argv[2] if len(sys.argv) > 2 else "").strip()
+    body = (sys.argv[3] if len(sys.argv) > 3 else "").strip()
+    if not summary and not body:
+        return
+    try:
+        toasts = json.loads(OUT.read_text()).get("toasts", [])
+    except Exception:
+        toasts = []
+    now = int(time.time() * 1000)
+    if toasts:
+        last = toasts[-1]
+        if (last.get("app") == (app or "Notification") and last.get("summary") == summary
+                and last.get("body") == body and now - last.get("ts", 0) < 4000):
+            return
+    toasts.append({"ts": now, "app": app or "Notification", "summary": summary, "body": body})
+    toasts = toasts[-30:]
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    tmp = OUT.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"ts": now, "toasts": toasts}))
+    os.replace(tmp, OUT)
+
+
+if __name__ == "__main__":
+    main()

@@ -103,6 +103,14 @@ post_hook = '~/.spicetify/spicetify refresh -n >/dev/null 2>&1'
 input_path = '~/.config/matugen/templates/ghdesktop-glass.css'
 output_path = '~/.config/ghdesktop-glass/ghdesktop-glass.css'
 
+[templates.signal]
+input_path = '~/.config/matugen/templates/signal-glass.css'
+output_path = '~/.config/signal-glass/signal-glass.css'
+
+[templates.zapzap]
+input_path = '~/.config/matugen/templates/zapzap-glass.css'
+output_path = '~/.config/zapzap-glass/zapzap-glass.css'
+
 [templates.quickshell_overview]
 input_path = '~/.config/matugen/templates/quickshell-overview.qml'
 output_path = '~/.config/quickshell/overview/common/Appearance.colors.qml'

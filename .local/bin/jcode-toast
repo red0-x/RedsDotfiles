@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# jcode turn_end hook -> rice toast
+status=${JCODE_HOOK_STATUS:-ok}
+text=$(printf '%s' "${JCODE_HOOK_LAST_ASSISTANT_TEXT:-}" | tr '\n' ' ' | cut -c1-160)
+if [[ $status == ok ]]; then
+  title="Turn finished"
+else
+  title="Turn failed"
+fi
+[[ -n $text ]] || text="Session ${JCODE_HOOK_SESSION_ID:0:8}"
+~/.local/bin/rice-toast jcode "$title" "$text"
+exit 0

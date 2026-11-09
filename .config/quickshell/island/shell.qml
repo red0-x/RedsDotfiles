@@ -118,7 +118,8 @@ ShellRoot {
     readonly property var player: {
         const ps = realPlayers;
         if (!ps.length) return null;
-        return ps.find(p => p.dbusName === preferredBus) ?? ps.find(p => p.isPlaying) ?? ps[0];
+        return ps.find(p => p.dbusName === preferredBus) ?? ps.find(p => p.isPlaying)
+            ?? ps.find(p => (p.dbusName ?? "").includes("spotify")) ?? ps[0];
     }
     readonly property bool playing: player?.isPlaying ?? false
     readonly property string title: player ? (player.trackTitle || player.identity || "") : ""
@@ -382,6 +383,19 @@ ShellRoot {
     readonly property bool btOn: bt?.enabled ?? false
     readonly property var btDevices: bt ? bt.devices.values : []
     readonly property var btConnected: btDevices.filter(d => d.connected)
+
+    // ------------------------------------------------------------ airpods
+    // librepods owns the AAP socket; its tray tooltip carries the battery
+    // ("Left: 90%, Right: 85%, Case: 40%"). Island flashes a card on connect.
+    readonly property var podsDev: btConnected.find(d => /airpods/i.test(d.name || d.deviceName || "")) ?? null
+    readonly property var podsTray: trayItems.find(t => (t.id ?? "") === "librepods") ?? null
+    readonly property var podsBatt: {
+        const s = (podsTray?.tooltipTitle ?? "") + " " + (podsTray?.tooltipDescription ?? "");
+        const g = k => { const m = s.match(new RegExp(k + ":\\s*(\\d+)%")); return m ? +m[1] : -1; };
+        return { left: g("Left"), right: g("Right"), cas: g("Case"), headset: g("Headset") };
+    }
+    onPodsDevChanged: if (podsDev && pinned === "") { pinned = "pods"; podsHide.restart(); }
+    Timer { id: podsHide; interval: 5000; onTriggered: if (root.pinned === "pods") root.unpin() }
 
     // ------------------------------------------------------------ updates
     // idle | checking | ready | running | done | failed
